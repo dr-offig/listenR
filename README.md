@@ -1,2 +1,2 @@
 # listenR
-Machine Listening
+Machine Listening Library
