@@ -1,2 +1,3 @@
 # listenR
-Machine Listening Library
+Machine Listening Library by Dr.Offig
+
