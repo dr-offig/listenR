@@ -1,3 +1,3 @@
 # listenR
-Machine Listening Library by Dr.Offig
+Machine Listening Library for ecoacoustics by Dr.Offig
 
