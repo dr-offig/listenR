@@ -13,3 +13,12 @@ Dx <- function(x,forwards=TRUE)
     pad(dx,n=0,m=1)
 
 }
+
+
+plot.shade <- function(f)
+{
+  g <- Dx(f)
+  h <- g / sd(g)
+  ggplot(data.frame(x=seq_along(f),y=f,w=h), aes(x,y,col=abs(w))) + geom_line(size=1)
+}
+
