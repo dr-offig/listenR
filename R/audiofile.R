@@ -1,16 +1,16 @@
 # Reference class abstraction for caching large audio files
 
-library(tuneR)
-library(data.table)
-library(stats)
-library(signal)
-library(R6)
-library(ggplot2)
-library(scales)
-library(plotly)
+# library(tuneR)
+# library(data.table)
+# library(stats)
+# library(signal)
+# library(R6)
+# library(ggplot2)
+# library(scales)
+# library(plotly)
 #library(ggthemr)
 #library(shiny)
-library(hms)
+# library(hms)
 #
 # library(e1071)
 

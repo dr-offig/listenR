@@ -1,4 +1,4 @@
-library(Rwave)
+#library(Rwave)
 
 scaleFor <- function(octave,voice,num_voices) { 2^(octave + (voice-1)/num_voices) }
 scaleAt <- function(index,num_voices) {
