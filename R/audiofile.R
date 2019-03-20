@@ -1,28 +1,4 @@
 # Reference class abstraction for caching large audio files
-
-# library(tuneR)
-# library(data.table)
-# library(stats)
-# library(signal)
-# library(R6)
-# library(ggplot2)
-# library(scales)
-# library(plotly)
-#library(ggthemr)
-#library(shiny)
-# library(hms)
-#
-# library(e1071)
-
-#source('./cqt.R')
-#source('./DTDWT.R')
-
-
-#testfile1 <- "/home/ybot/code/R/ybot.R/data/audio/catfish/grunts cleared/0_02_150.wav"
-#testfile2 <- "/home/ybot/code/R/ybot.R/data/audio/catfish/grunts cleared/0_10_830.wav"
-#testfile3 <- "/home/ybot/code/R/ybot.R/data/audio/catfish/BlueCatfish_LonePine_25052018_Stereo.wav"
-#testfile4 <- "/home/ybot/code/R/ybot.R/data/audio/Talaroo/test_sound.wav"
-
 #.datatable.aware = TRUE
 
 # Utilities
@@ -46,6 +22,7 @@ dt <- function(clockTime) {
   return(elapsed)
 }
 
+
 # Main class
 Audiofile <- R6::R6Class("Audiofile",
                   public = list(
@@ -53,7 +30,11 @@ Audiofile <- R6::R6Class("Audiofile",
                     frames = NULL,
                     channels = NULL,
                     samplerate = NULL,
+                    waveObject = NULL,
                     audioData = NULL,
+                    #startDateTime = as.POSIXct(0,origin = "1970-01-01",tz="UTC"),
+                    timezone = NULL,
+                    filteredData = NULL,
                     spectrogram = NULL,
                     envelope = NULL,
                     constQ = NULL,
@@ -80,13 +61,15 @@ Audiofile <- R6::R6Class("Audiofile",
                         if (is.character(arg)) {
                           fname <- arg
                           self$filename <- fname
-                          waveObject <- tuneR::normalize(tuneR::readWave(fname, toWaveMC = TRUE),rescale=FALSE)
-                          self$frames <- dim(waveObject@.Data)[[1]]
-                          self$channels <- dim(waveObject@.Data)[[2]]
-                          self$samplerate <- waveObject@samp.rate
-                          self$audioData <- as.data.table(waveObject@.Data)
+                          self$waveObject <- tuneR::normalize(tuneR::readWave(fname, toWaveMC = TRUE),rescale=FALSE)
+                          self$frames <- dim(self$waveObject@.Data)[[1]]
+                          self$channels <- dim(self$waveObject@.Data)[[2]]
+                          self$samplerate <- self$waveObject@samp.rate
+                          self$audioData <- as.data.table(self$waveObject@.Data)
                           names(self$audioData) <- paste0("channel",as.character(seq(from=1,to=self$channels,by=1)))
                           self$audioData[, frame:=.I]
+                          # self$audioData[, time:=as.POSIXct(((frame-1) / ..self$samplerate) + ..self$startDateTime, origin = "1970-01-01", tz="UTC")]
+                          # setcolorder(self$audioData,"time")
                           self$spectrogramCalculated <- FALSE
                           #self$spectrogramWindowSize <- 512
                           self$spectrogramWindow <- signal::hanning
@@ -97,6 +80,7 @@ Audiofile <- R6::R6Class("Audiofile",
                           self$frames <- arg$frames
                           self$channels <- arg$channels
                           self$samplerate <- arg$samplerate
+                          self$waveObject <- copy(arg$waveObject)
                           self$audioData <- copy(arg$audioData)
                           self$spectrogram <- copy(arg$spectrogram)
                           self$spectrogramCalculated <- arg$spectrogramCalculated
@@ -197,6 +181,31 @@ Audiofile <- R6::R6Class("Audiofile",
 )
 
 
+
+Audiofile$set("public","convert", function(t=0, from="seconds", to="samples") {
+  if(to == "samples") {
+    if (from == "seconds") { t * self$samplerate }
+    else if (from == "hms") { as.numeric(t) * self$samplerate }
+    else if (from == "spectral_blocks") { t * self$spectrogramWindowSize }
+    else if (from == "cq_blocks") { t * self$constQWindowSize }
+    else if (from == "env_blocks") { t * self$envelopeWindowSize }
+    else { t }
+  } else if (to == "seconds") {
+    self$convert(t,from=from, to="samples") / self$samplerate
+  } else if (to == "hms") {
+    as.hms(self$convert(t,from=from, to="seconds"))
+  } else if (to == "spectral_blocks") {
+    self$convert(t,from=from, to="samples") / self$spectrogramWindowSize
+  } else if (to == "cq_blocks") {
+    self$convert(t,from=from, to="samples") / self$constQWindowSize
+  } else if (to == "env_blocks") {
+    self$convert(t,from=from, to="samples") / self$envelopeWindowSize
+  } else { t }
+
+})
+
+
+
 ###### Apply an arbitrary analysis window by window ######
 Audiofile$set("public", "apply", function(analysis=rms, wt=signal::hanning, n=512, h=256, ch=1, offset=0, units="seconds",from=0,
                                           to=if(units == "seconds") { self$frames / self$samplerate } else { self$frames }) {
@@ -205,7 +214,6 @@ Audiofile$set("public", "apply", function(analysis=rms, wt=signal::hanning, n=51
   b <- if(units == "seconds") to * self$samplerate else to
   A <- floor(a / h)
   B <- floor((b-(n-1)) / h)
-
 
   cat(paste0("Analysing audio file ", basename(self$filename), " frames [", a,":", b, "] with window size ",n , " and hop ",h, "\n"))
   #m <- floor((self$frames - n) / h)
@@ -559,6 +567,135 @@ Audiofile$set("public","powermap", function(n=self$spectrogramWindowSize, h=self
   #   dd$power <- 10*log10((dd$power + 10e-13) / 10e-13)
 
   return(d)
+
+})
+
+
+Audiofile$set("public","ts", function(units="samples",
+                                      from=0,
+                                      to=if(units=="samples") { self$frames }
+                                      else if (units == "seconds") { self$frames / self$samplerate }
+                                      else if (units == "hms") { as.hms(self$frames / self$samplerate) }
+                                      else if (units == "spectral_blocks") { self$frames / self$spectrogramWindowSize }
+                                      else if (units == "cq_blocks") { self$frames / self$constQWindowSize }
+                                      else if (units == "env_blocks") { self$frames / self$envelopeWindowSize }
+                                      else { self$frames })
+{
+  start_sample <- if(units=="samples") { from }
+  else if (units == "seconds") { from * self$samplerate }
+  else if (units == "hms") { as.numeric(from) * self$samplerate }
+  else if (units == "spectral_blocks") { from * self$spectrogramWindowSize }
+  else if (units == "cq_blocks") { from * self$constQWindowSize }
+  else if (units == "env_blocks") { from * self$envelopeWindowSize }
+  else { from }
+
+  end_sample <- if(units=="samples") { to }
+  else if (units == "seconds") { to * self$samplerate }
+  else if (units == "hms") { as.numeric(to) * self$samplerate }
+  else if (units == "spectral_blocks") { to * self$spectrogramWindowSize }
+  else if (units == "cq_blocks") { to * self$constQWindowSize }
+  else if (units == "env_blocks") { to * self$envelopeWindowSize }
+  else { to }
+
+  zooreg(as.matrix(self$audioData[(start_sample:end_sample), c(self$get_channel_names())]),
+         order.by = self$audioData[(start_sample:end_sample),frame-1],
+         frequency = self$samplerate)
+
+})
+
+
+Audiofile$set("public","matrix", function(units="samples",
+                                      from=0,
+                                      to=if(units=="samples") { self$frames }
+                                      else if (units == "seconds") { self$frames / self$samplerate }
+                                      else if (units == "hms") { as.hms(self$frames / self$samplerate) }
+                                      else if (units == "spectral_blocks") { self$frames / self$spectrogramWindowSize }
+                                      else if (units == "cq_blocks") { self$frames / self$constQWindowSize }
+                                      else if (units == "env_blocks") { self$frames / self$envelopeWindowSize }
+                                      else { self$frames })
+{
+  start_sample <- if(units=="samples") { from }
+  else if (units == "seconds") { from * self$samplerate }
+  else if (units == "hms") { as.numeric(from) * self$samplerate }
+  else if (units == "spectral_blocks") { from * self$spectrogramWindowSize }
+  else if (units == "cq_blocks") { from * self$constQWindowSize }
+  else if (units == "env_blocks") { from * self$envelopeWindowSize }
+  else { from }
+
+  end_sample <- if(units=="samples") { to }
+  else if (units == "seconds") { to * self$samplerate }
+  else if (units == "hms") { as.numeric(to) * self$samplerate }
+  else if (units == "spectral_blocks") { to * self$spectrogramWindowSize }
+  else if (units == "cq_blocks") { to * self$constQWindowSize }
+  else if (units == "env_blocks") { to * self$envelopeWindowSize }
+  else { to }
+
+  as.matrix(self$audioData[(start_sample:end_sample), c(self$get_channel_names())])
+})
+
+
+Audiofile$set("public","vector", function(units="samples",
+                                          from=0,
+                                          to=if(units=="samples") { self$frames }
+                                          else if (units == "seconds") { self$frames / self$samplerate }
+                                          else if (units == "hms") { as.hms(self$frames / self$samplerate) }
+                                          else if (units == "spectral_blocks") { self$frames / self$spectrogramWindowSize }
+                                          else if (units == "cq_blocks") { self$frames / self$constQWindowSize }
+                                          else if (units == "env_blocks") { self$frames / self$envelopeWindowSize }
+                                          else { self$frames },
+                                          ch=1)
+{
+  force(to)
+  start_sample <- self$convert(t=from, from=units, to="samples")
+  end_sample <- self$convert(t=to, from=units, to="samples")
+  chanName <- self$get_channel_names()[[ch]]
+  self$audioData[(start_sample:end_sample), ..chanName]
+})
+
+
+Audiofile$set("public","wave", function(units="samples",
+                                          from=0,
+                                          to=if(units=="samples") { self$frames }
+                                          else if (units == "seconds") { self$frames / self$samplerate }
+                                          else if (units == "hms") { as.hms(self$frames / self$samplerate) }
+                                          else if (units == "spectral_blocks") { self$frames / self$spectrogramWindowSize }
+                                          else if (units == "cq_blocks") { self$frames / self$constQWindowSize }
+                                          else if (units == "env_blocks") { self$frames / self$envelopeWindowSize }
+                                          else { self$frames },
+                                          ch=1)
+{
+  force(to)
+  start_sample <- self$convert(t=from, from=units, to="samples")
+  end_sample <- self$convert(t=to, from=units, to="samples")
+  #chanName <- self$get_channel_names()[[ch]]
+  #self$audioData[(start_sample:end_sample), ..chanName]
+  tuneR::extractWave(self$waveObject,from=start_sample,to=end_sample,units="samples")
+})
+
+
+# Audiofile$set("public","seewave", function(funk, ...) {
+#   funk(self$waveObject, ...)
+# })
+
+Audiofile$set("public", "applySeewave", function(analysis=seewave::ACI, n=4096, h=2048, offset=0, units="samples",from=0,
+                                          to=if(units == "seconds") { self$frames / self$samplerate } else { self$frames },
+                                          ...) {
+
+  a <- if(units == "seconds") from * self$samplerate else from
+  b <- if(units == "seconds") to * self$samplerate else to
+  A <- floor(a / h)
+  B <- floor((b-(n-1)) / h)
+
+  cat(paste0("Analysing audio file ", basename(self$filename), " frames [", a,":", b, "] with window size ",n , " and hop ",h, "\n"))
+  #m <- floor((self$frames - n) / h)
+  #self$audioData[, spectroBlock := (((frame + (h/2) - (n/2)) %/% h)+1)]
+  gt <- function(i) {
+    #x <- unlist(self$audioData[(offset + i*h + 1):(offset + i*h + n),ch:ch],use.names=FALSE)
+    x <- unlist(self$wave(from=(offset + i*h + 1), to=(offset + i*h + n)))
+    #wx <- x * wt(n)
+    return(analysis(x, ...))
+  }
+  fullAnalysis <- sapply(A:B,gt)
 
 })
 
