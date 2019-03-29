@@ -295,6 +295,7 @@ Audiofile$set("public","snippet",
   output <- Audiofile$new()
   output$channels <- self$channels
   output$samplerate <- self$samplerate
+  output$spectrogramWindow <- signal::hanning
   output$audioData <- self$audioData[(start_sample:end_sample), c(self$get_channel_names())]
   output$audioData[, frame:=.I]
   output$frames <- dim(output$audioData)[[1]]
@@ -307,6 +308,7 @@ Audiofile$set("public","downsample", function(d=2,offset=0)
 {
   output <- Audiofile$new()
   output$channels <- self$channels
+  output$spectrogramWindow <- signal::hanning
   output$audioData <- self$audioData[(frame+offset) %% d == 0, c(self$get_channel_names())]
   output$audioData[, frame:=.I]
   output$frames <- dim(output$audioData)[[1]]
