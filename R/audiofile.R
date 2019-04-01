@@ -186,8 +186,8 @@ Audiofile$set("public","convert", function(t=0, from="seconds", to="samples") {
   if(to == "samples") {
     if (from == "seconds") { t * self$samplerate }
     else if (from == "hms") { as.numeric(t) * self$samplerate }
-    else if (from == "spectral_blocks") { t * self$spectrogramWindowSize }
-    else if (from == "cq_blocks") { t * self$constQWindowSize }
+    else if (from == "spectral_blocks") { t * self$spectrogramHop }
+    else if (from == "cq_blocks") { t * self$constQHop }
     else if (from == "env_blocks") { t * self$envelopeWindowSize }
     else { t }
   } else if (to == "seconds") {
@@ -195,9 +195,9 @@ Audiofile$set("public","convert", function(t=0, from="seconds", to="samples") {
   } else if (to == "hms") {
     as.hms(self$convert(t,from=from, to="seconds"))
   } else if (to == "spectral_blocks") {
-    self$convert(t,from=from, to="samples") / self$spectrogramWindowSize
+    self$convert(t,from=from, to="samples") / self$spectrogramHop
   } else if (to == "cq_blocks") {
-    self$convert(t,from=from, to="samples") / self$constQWindowSize
+    self$convert(t,from=from, to="samples") / self$constQHop
   } else if (to == "env_blocks") {
     self$convert(t,from=from, to="samples") / self$envelopeWindowSize
   } else { t }
