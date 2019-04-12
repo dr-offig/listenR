@@ -18,6 +18,7 @@ Imports: tuneR,
     plotly,
     hms,
     e1071,
+    pryr,
     pracma,
     waveslim,
     zoo

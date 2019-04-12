@@ -141,6 +141,7 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight)
     tmp <- tmp + af$duration(); # TODO: think about this for gapped files
     candInd <- max(candInd+1,self$candidateFileIndexForTime(tmp))
     remainingWindows <- numWindows - dim(output)[[1]]
+    af$unloadAudio()
   }
 
   return(output)
