@@ -27,9 +27,14 @@ dt <- function(clockTime) {
 Audiofile <- R6::R6Class("Audiofile",
                   public = list(
                     filename = NULL,
+                    offsetIntoFile = 0,
+                    part = 1,
+                    parts = 1,
+                    audioLoaded = FALSE,
                     frames = NULL,
                     channels = NULL,
                     samplerate = NULL,
+                    waveHeader = NULL,
                     waveObject = NULL,
                     audioData = NULL,
                     #startDateTime = as.POSIXct(0,origin = "1970-01-01",tz="UTC"),
@@ -44,76 +49,103 @@ Audiofile <- R6::R6Class("Audiofile",
                     spectrogramCalculated = FALSE,
                     spectrogramWindowSize = 512,
                     spectrogramHop = 256,
-                    spectrogramWindow = NULL,
+                    spectrogramWindow = NULL, #signal::hanning,
                     constQCalculated = FALSE,
                     constQWindowSize = 2048,
                     constQHop = 1024,
                     constQbins = NULL,
                     DTDWTCalculated = FALSE,
                     DTDWTLevels = 4,
-                    initialize = function(...) {
+                    initialize = function(filename=NULL, from=0, to=Inf,...) {
                       arguments <- list(...)
-                      if (length(arguments) == 0) {
+                      if (is.null(filename) && length(arguments) == 0) {
                         # default constructor
                         # nothing to do
-                      } else {
-                        arg <- arguments[[1]]
-                        if (is.character(arg)) {
-                          fname <- arg
-                          self$filename <- fname
-                          self$waveObject <- tuneR::normalize(tuneR::readWave(fname, toWaveMC = TRUE),rescale=FALSE)
-                          self$frames <- dim(self$waveObject@.Data)[[1]]
-                          self$channels <- dim(self$waveObject@.Data)[[2]]
-                          self$samplerate <- self$waveObject@samp.rate
-                          self$audioData <- as.data.table(self$waveObject@.Data)
-                          names(self$audioData) <- paste0("channel",as.character(seq(from=1,to=self$channels,by=1)))
-                          self$audioData[, frame:=.I]
-                          # self$audioData[, time:=as.POSIXct(((frame-1) / ..self$samplerate) + ..self$startDateTime, origin = "1970-01-01", tz="UTC")]
-                          # setcolorder(self$audioData,"time")
-                          self$spectrogramCalculated <- FALSE
-                          #self$spectrogramWindowSize <- 512
-                          self$spectrogramWindow <- signal::hanning
-                          self$calculateEnvelope()
-                          self$loadMsg()
-                        } else if ("Audiofile" %in% class(arg)) { # actually copies the data
-                          self$filename <- arg$filename
-                          self$frames <- arg$frames
-                          self$channels <- arg$channels
-                          self$samplerate <- arg$samplerate
-                          self$waveObject <- copy(arg$waveObject)
-                          self$audioData <- copy(arg$audioData)
-                          self$spectrogram <- copy(arg$spectrogram)
-                          self$spectrogramCalculated <- arg$spectrogramCalculated
-                          self$spectrogramWindowSize <- arg$spectrogramWindowSize
-                          self$spectrogramWindow <- arg$spectrogramWindow
-                          self$envelope <- copy(arg$envelope)
-                          self$constQ <- copy(arg$constQ)
-                          self$DTDWT <- copy(arg$DTDWT)
-                          self$envelopeCalculated <- arg$envelopeCalculated
-                          self$envelopeWindowSize <- arg$envelopeWindowSize
-                          self$spectrogramHop <- arg$spectrogramHop
-                          self$constQCalculated <- arg$constQCalculated
-                          self$constQWindowSize <- arg$constQWindowSize
-                          self$constQHop <- arg$constQHop
-                          self$constQbins <- arg$constQbins
-                          self$DTDWTCalculated <- arg$DTDWTCalculated
-                          self$DTDWTLevels <- arg$DTDWTLevels
+                      } else if (!is.null(filename)) {
+                        if (hasArg("from")) { self$offsetIntoFile <- from }
+                        stopReadingAt <- Inf; if (hasArg("to")) { stopReadingAt <- to }
+                        fname <- filename
+                        self$filename <- fname
+                        self$waveHeader <- tuneR::readWave(fname, header=TRUE, toWaveMC=TRUE)
+                        #self$waveObject <- tuneR::normalize(tuneR::readWave(fname, from = offsetIntoFile+1, to=stopReadingAt, toWaveMC = TRUE),rescale=FALSE)
+                        self$frames <- min(self$waveHeader$samples, stopReadingAt-self$offsetIntoFile)
+                        self$channels <- self$waveHeader$channels
+                        self$samplerate <- self$waveHeader$sample.rate
+                        #self$audioData <- as.data.table(self$waveObject@.Data)
+                        #names(self$audioData) <- paste0("channel",as.character(seq(from=1,to=self$channels,by=1)))
+                        #self$audioData[, frame:=.I]
+                        # self$audioData[, time:=as.POSIXct(((frame-1) / ..self$samplerate) + ..self$startDateTime, origin = "1970-01-01", tz="UTC")]
+                        # setcolorder(self$audioData,"time")
+                        self$spectrogramCalculated <- FALSE
+                        #self$spectrogramWindowSize <- 512
+                        self$spectrogramWindow <- signal::hanning
+                        #self$calculateEnvelope()
+                        self$loadMsg()
+                      } else if ("Audiofile" %in% class(args[[1]])) { # actually copies the data
+                        arg <- args[[1]]
+                        self$filename <- arg$filename
+                        self$frames <- arg$frames
+                        self$channels <- arg$channels
+                        self$samplerate <- arg$samplerate
+                        self$waveObject <- copy(arg$waveObject)
+                        self$audioData <- copy(arg$audioData)
+                        self$spectrogram <- copy(arg$spectrogram)
+                        self$spectrogramCalculated <- arg$spectrogramCalculated
+                        self$spectrogramWindowSize <- arg$spectrogramWindowSize
+                        self$spectrogramWindow <- arg$spectrogramWindow
+                        self$envelope <- copy(arg$envelope)
+                        self$constQ <- copy(arg$constQ)
+                        self$DTDWT <- copy(arg$DTDWT)
+                        self$envelopeCalculated <- arg$envelopeCalculated
+                        self$envelopeWindowSize <- arg$envelopeWindowSize
+                        self$spectrogramHop <- arg$spectrogramHop
+                        self$constQCalculated <- arg$constQCalculated
+                        self$constQWindowSize <- arg$constQWindowSize
+                        self$constQHop <- arg$constQHop
+                        self$constQbins <- arg$constQbins
+                        self$DTDWTCalculated <- arg$DTDWTCalculated
+                        self$DTDWTLevels <- arg$DTDWTLevels
 
-                        } else {
-                          cat(paste0("Attempted to construct audiofile from object of class ", class(arg)))
-                        }
+                      } else {
+                        cat(paste0("Attempted to construct audiofile from object of class ", class(args[[1]])))
                       }
+                    },
+                    loadAudio = function() {
+                      self$waveObject <- tuneR::normalize(tuneR::readWave(self$filename, from = self$offsetIntoFile+1, to=self$frames, toWaveMC = TRUE),rescale=FALSE)
+                      self$frames <- dim(self$waveObject@.Data)[[1]]
+                      self$channels <- dim(self$waveObject@.Data)[[2]]
+                      self$samplerate <- self$waveObject@samp.rate
+                      self$audioData <- as.data.table(self$waveObject@.Data)
+                      names(self$audioData) <- paste0("channel",as.character(seq(from=1,to=self$channels,by=1)))
+                      self$audioData[, frame:=.I]
+                      selfaudioLoaded <- TRUE
+                    },
+                    unloadAudio = function() {
+                      self$waveObject <- NULL
+                      self$audioData <- NULL
+                      self$spectrogram <- NULL
+                      self$envelope <- NULL
+                      self$constQ <- NULL
+                      self$DTDWT <- NULL
+                      self$envelopeCalculated <- FALSE
+                      self$spectrogramCalculated <- FALSE
+                      self$constQCalculated <- FALSE
+                      self$DTDWTCalculated <- FALSE
+                      self$audioLoaded <- FALSE
+                      gc()
                     },
                     loadMsg = function() {
                       cat(paste0("Loaded audio file ", basename(self$filename), ".\n"))
                     },
                     calculateEnvelope = function(h=self$envelopeWindowSize) {
+                      if (!self$audioLoaded) { self$loadAudio() }
                       self$envelopeWindowSize <- h
                       self$audioData[, envBlock := ((frame %/% h) + 1)]
                       self$envelope <- self$audioData[,lapply(.SD,rms),by=envBlock,.SDcols=-c("frame")]
                       self$envelopeCalculated = TRUE
                     },
                     calculateSpectrogram = function(n=512,h=256,wt=signal::hanning,ch=1) {
+                      if (!self$audioLoaded) { self$loadAudio() }
                       m <- floor((self$frames - n) / h)
                       self$audioData[, spectroBlock := (((frame + (h/2) - (n/2)) %/% h)+1)]
                       gt <- function(i) {
@@ -133,6 +165,7 @@ Audiofile <- R6::R6Class("Audiofile",
                       self$spectrogramCalculated <- TRUE
                     },
                     calculateConstQ = function(n=2048,h=1024,ch=1,minFreq=60,maxFreq=10000,bins=4) {
+                      if (!self$audioLoaded) { self$loadAudio() }
                       SK <- sparseKernel(minFreq,maxFreq,bins,self$samplerate)
                       self$constQbins <- constQfreqbins(minFreq,maxFreq,bins)
                       m <- floor((self$frames - n) / h)
@@ -151,6 +184,8 @@ Audiofile <- R6::R6Class("Audiofile",
                       self$constQCalculated <- TRUE
                     },
                     calculateDualTree = function(J=4,ch=1) {
+                      if (!self$audioLoaded) { self$loadAudio() }
+
                       # These are constants
                       Faf <- FSfarras()$af
                       Fsf <- FSfarras()$sf
@@ -176,10 +211,12 @@ Audiofile <- R6::R6Class("Audiofile",
                     },
                     get_channel_names = function() {
                       unlist(lapply(1:self$channels,function(i) { paste0("channel",as.character(i))}))
+                    },
+                    duration = function() {
+                      return(self$frames / self$samplerate)
                     }
                   )
 )
-
 
 
 Audiofile$set("public","convert", function(t=0, from="seconds", to="samples") {
@@ -209,7 +246,7 @@ Audiofile$set("public","convert", function(t=0, from="seconds", to="samples") {
 ###### Apply an arbitrary analysis window by window ######
 Audiofile$set("public", "apply", function(analysis=rms, wt=signal::hanning, n=512, h=256, ch=1, offset=0, units="seconds",from=0,
                                           to=if(units == "seconds") { self$frames / self$samplerate } else { self$frames }) {
-
+  if (!self$audioLoaded) { self$loadAudio() }
   a <- if(units == "seconds") from * self$samplerate else from
   b <- if(units == "seconds") to * self$samplerate else to
   A <- floor(a / h)
@@ -231,6 +268,7 @@ Audiofile$set("public", "apply", function(analysis=rms, wt=signal::hanning, n=51
 ######### utilities ########
 Audiofile$set("public", "around", function(t,w=4096,ch=1)
 {
+  if (!self$audioLoaded) { self$loadAudio() }
   start_sample <- t - floor(w/2)
   end_sample <- t + floor(w/2) - 1
   chan <- paste0("channel",toString(ch))
@@ -269,6 +307,7 @@ Audiofile$set("public","snippet",
                        else if (units == "hms") { as.hms(from + 1) }
                        else {from + 1 })
 {
+  if (!self$audioLoaded) { self$loadAudio() }
   # start_sample <- t - floor(w/2)
   # end_sample <- t + floor(w/2) - 1
   # chan <- paste0("channel",toString(ch))
@@ -306,6 +345,7 @@ Audiofile$set("public","snippet",
 
 Audiofile$set("public","downsample", function(d=2,offset=0)
 {
+  if (!self$audioLoaded) { self$loadAudio() }
   output <- Audiofile$new()
   output$channels <- self$channels
   output$spectrogramWindow <- signal::hanning
@@ -321,6 +361,7 @@ Audiofile$set("public","downsample", function(d=2,offset=0)
 Audiofile$set("public", "plot", function(units="seconds",from=0,
                                              to=if(units == "seconds") { 1 } else { self$samplerate })
 {
+  if (!self$audioLoaded) { self$loadAudio() }
   #channel_names <- unlist(lapply(1:self$channels,function(i) { paste0("channel",as.character(i))}))
   channel_names <- self$get_channel_names()
   selectCols <- c("frame",channel_names)
@@ -340,6 +381,7 @@ Audiofile$set("public", "plot", function(units="seconds",from=0,
 Audiofile$set("public", "plot.env", function(units="seconds",from=0,
                                          to=if(units == "seconds") { self$frames / self$samplerate } else { self$frames })
 {
+  if (!self$audioLoaded) { self$loadAudio() }
   if (!self$envelopeCalculated)
     self$calculateEnvelope()
 
@@ -410,6 +452,7 @@ Audiofile$set("public", "plot.spectrogram",
                        maxFreq=self$samplerate/2,
                        trans="identity", contrast=1)
 {
+  if (!self$audioLoaded) { self$loadAudio() }
   if ((!self$spectrogramCalculated) || n!=self$spectrogramWindowSize || h!=self$spectrogramHop)
     self$calculateSpectrogram(n=n, h=h, wt=wt, ch=ch)
 
@@ -502,6 +545,7 @@ Audiofile$set("public", "plot.spectrogram",
 Audiofile$set("public", "plot.constQ", function(units="seconds",from=0,
                                                   to=if(units == "seconds") { self$frames / self$samplerate } else { self$frames })
 {
+  if (!self$audioLoaded) { self$loadAudio() }
   if (!self$constQCalculated)
   { self$calculateConstQ() }
 
@@ -549,6 +593,7 @@ Audiofile$set("public", "plot.constQ", function(units="seconds",from=0,
 
 Audiofile$set("public","powermap", function(n=self$spectrogramWindowSize, h=self$spectrogramHop, w=self$spectrogramWindow)
 {
+  if (!self$audioLoaded) { self$loadAudio() }
   if ( (!self$spectrogramCalculated) || n!=self$spectrogramWindowSize || h!=self$spectrogramHop || w!=self$spectrogramWindow )
     self$calculateSpectrogram(n=n,h=h,w=w)
   nz <- self$spectrogram[,c(-1)]
@@ -583,6 +628,8 @@ Audiofile$set("public","ts", function(units="samples",
                                       else if (units == "env_blocks") { self$frames / self$envelopeWindowSize }
                                       else { self$frames })
 {
+  if (!self$audioLoaded) { self$loadAudio() }
+
   start_sample <- if(units=="samples") { from }
   else if (units == "seconds") { from * self$samplerate }
   else if (units == "hms") { as.numeric(from) * self$samplerate }
@@ -616,6 +663,8 @@ Audiofile$set("public","matrix", function(units="samples",
                                       else if (units == "env_blocks") { self$frames / self$envelopeWindowSize }
                                       else { self$frames })
 {
+  if (!self$audioLoaded) { self$loadAudio() }
+
   start_sample <- if(units=="samples") { from }
   else if (units == "seconds") { from * self$samplerate }
   else if (units == "hms") { as.numeric(from) * self$samplerate }
@@ -647,6 +696,8 @@ Audiofile$set("public","vector", function(units="samples",
                                           else { self$frames },
                                           ch=1)
 {
+  if (!self$audioLoaded) { self$loadAudio() }
+
   force(to)
   start_sample <- self$convert(t=from, from=units, to="samples")
   end_sample <- self$convert(t=to, from=units, to="samples")
@@ -666,6 +717,8 @@ Audiofile$set("public","wave", function(units="samples",
                                           else { self$frames },
                                           ch=1)
 {
+  if (!self$audioLoaded) { self$loadAudio() }
+
   force(to)
   start_sample <- self$convert(t=from, from=units, to="samples")
   end_sample <- self$convert(t=to, from=units, to="samples")
@@ -683,6 +736,7 @@ Audiofile$set("public", "applySeewave", function(analysis=seewave::ACI, n=4096, 
                                           to=if(units == "seconds") { self$frames / self$samplerate } else { self$frames },
                                           ...) {
 
+  if (!self$audioLoaded) { self$loadAudio() }
   a <- if(units == "seconds") from * self$samplerate else from
   b <- if(units == "seconds") to * self$samplerate else to
   A <- floor(a / h)
