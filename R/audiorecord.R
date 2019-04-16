@@ -229,10 +229,21 @@ function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, fram
     spectroFrame2tiff(frm,tifPath,contrast)
     tifImg <- image_read(tifPath)
     gifPath <- stringr::str_replace(tifPath,".tif{1,2}$",".gif")
-    image_write(tifImg, gifPath)
+    image_write(tifImg, gifPath, format='gif')
     frameNumber <- frameNumber + 1
     from <- frm$end_time + 0.001
     cat(sprintf("Exported frame covering %d secs to %d secs, of a total %d secs\n", floor(frm$start_time), floor(frm$end_time), floor(to)))
   }
+
+  img1filename <- sprintf("%s_%06d", fname, 0)
+  img1path <- paste0(dirname, "/", img1filename, ".gif")
+  blankImgFilename <- sprintf("%s_blank", fname, 0)
+  blankImgPath <- paste0(dirname, "/", blankImgFilename, ".gif")
+  imgdev <- image_draw(image_read(img1path))
+  rect(0,0,frameWidth,frameHeight,col='black')
+  blankImg <- image_capture()
+  dev.off()
+  image_write(blankImg,blankImgPath,format='gif')
+  return(TRUE)
 })
 
