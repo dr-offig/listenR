@@ -218,6 +218,7 @@ function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, fram
   self$copyToFolder(dirname)
 
   frameNumber <- 0
+  tifs <- list()
   while (from < to) {
     frm <- self$spectrogramFrame(from=from, fftSize=fftSize, fftHop=fftHop, frameWidth=frameWidth, frameHeight=frameHeight, channel=channel)
     imgFilename <- sprintf("%s_%06d", fname, frameNumber)
@@ -228,6 +229,7 @@ function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, fram
     #tifPath <- stringr::str_replace(imgPath,".tif{1,2}$",".tif")
     spectroFrame2tiff(frm,tifPath,contrast)
     tifImg <- image_read(tifPath)
+    tifs <- c(tifs,tifImg)
     gifPath <- stringr::str_replace(tifPath,".tif{1,2}$",".gif")
     image_write(tifImg, gifPath, format='gif')
     frameNumber <- frameNumber + 1
@@ -244,6 +246,10 @@ function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, fram
   blankImg <- image_capture()
   dev.off()
   image_write(blankImg,blankImgPath,format='gif')
+
+  fullImage <- image_append(do.call(c,tifs))
+  fullImgPath <- paste0(dirname, "/", fname, ".gif")
+  image_write(fullImage, fullImgPath, format='gif')
+
   return(TRUE)
 })
-
