@@ -124,7 +124,17 @@ Audiorecord <- R6::R6Class(
                     min(self$audiofiles[[ind2]]$duration(), to - self$start_times[[ind2]]))
         }
       }
+     },
+     filenames = function() {
+       lapply(self$audiofiles, function(af) { af$filename })
+     },
+     physicalFiles = function() {
+       unique(unlist(self$filenames()))
+     },
+     copyToFolder = function(folderURL, overwrite=FALSE) {
+       file.copy(from=self$physicalFiles(), to=folderURL, overwrite=overwrite)
      }
+
    )
 )
 
@@ -204,6 +214,8 @@ function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, fram
   tokens <- unlist(strsplit(filepath,"[.]"))
   dirname <- paste0(tokens[1:(length(tokens)-1)], collapse=".")
   dir.create(dirname)
+
+  self$copyToFolder(dirname)
 
   frameNumber <- 0
   while (from < to) {
