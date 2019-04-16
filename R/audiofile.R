@@ -63,12 +63,13 @@ Audiofile <- R6::R6Class("Audiofile",
                         # nothing to do
                       } else if (!is.null(filename)) {
                         if (hasArg("from")) { self$offsetIntoFile <- from }
+                        else { cat("No from argument") }
                         stopReadingAt <- Inf; if (hasArg("to")) { stopReadingAt <- to }
                         fname <- filename
                         self$filename <- fname
                         self$waveHeader <- tuneR::readWave(fname, header=TRUE, toWaveMC=TRUE)
                         #self$waveObject <- tuneR::normalize(tuneR::readWave(fname, from = offsetIntoFile+1, to=stopReadingAt, toWaveMC = TRUE),rescale=FALSE)
-                        self$frames <- min(self$waveHeader$samples, stopReadingAt-self$offsetIntoFile)
+                        self$frames <- min(self$waveHeader$samples, stopReadingAt) - self$offsetIntoFile
                         self$channels <- self$waveHeader$channels
                         self$samplerate <- self$waveHeader$sample.rate
                         #self$audioData <- as.data.table(self$waveObject@.Data)
@@ -80,7 +81,7 @@ Audiofile <- R6::R6Class("Audiofile",
                         #self$spectrogramWindowSize <- 512
                         self$spectrogramWindow <- signal::hanning
                         #self$calculateEnvelope()
-                        self$loadMsg()
+                        self$initMsg()
                       } else if ("Audiofile" %in% class(args[[1]])) { # actually copies the data
                         arg <- args[[1]]
                         self$filename <- arg$filename
@@ -111,14 +112,18 @@ Audiofile <- R6::R6Class("Audiofile",
                       }
                     },
                     loadAudio = function() {
-                      self$waveObject <- tuneR::normalize(tuneR::readWave(self$filename, from = self$offsetIntoFile+1, to=self$frames, toWaveMC = TRUE),rescale=FALSE)
+                      #theoreticalFrames <- self$frames
+                      self$waveObject <- tuneR::normalize(tuneR::readWave(self$filename, from = self$offsetIntoFile+1, to=self$offsetIntoFile + self$frames, toWaveMC = TRUE),rescale=FALSE)
                       self$frames <- dim(self$waveObject@.Data)[[1]]
+                      #loadedFrames <- self$frames
+                      #cat(sprintf("Loaded %d out of a theoretical %d frames", theoreticalFrames, loadedFrames))
                       self$channels <- dim(self$waveObject@.Data)[[2]]
                       self$samplerate <- self$waveObject@samp.rate
                       self$audioData <- as.data.table(self$waveObject@.Data)
                       names(self$audioData) <- paste0("channel",as.character(seq(from=1,to=self$channels,by=1)))
                       self$audioData[, frame:=.I]
                       selfaudioLoaded <- TRUE
+                      self$loadMsg()
                     },
                     unloadAudio = function() {
                       self$waveObject <- NULL
@@ -134,8 +139,11 @@ Audiofile <- R6::R6Class("Audiofile",
                       self$audioLoaded <- FALSE
                       gc()
                     },
+                    initMsg = function() {
+                      cat(paste0("Prepared audio file ", basename(self$filename), " - ready for loading\n"))
+                    },
                     loadMsg = function() {
-                      cat(paste0("Loaded audio file ", basename(self$filename), ".\n"))
+                      cat(paste(sep=" ", "Loaded audio file", basename(self$filename), "part", self$part, "of", self$parts, "\n"))
                     },
                     calculateEnvelope = function(h=self$envelopeWindowSize) {
                       if (!self$audioLoaded) { self$loadAudio() }

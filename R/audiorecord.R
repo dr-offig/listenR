@@ -52,6 +52,14 @@ Audiorecord <- R6::R6Class(
           },
           loadList$filename, loadList$from, loadList$to)
 
+        # set parts
+        numParts <- length(self$audiofiles)
+        for (i in 1:numParts) {
+          af <- self$audiofiles[[i]]
+          af$part <- i
+          af$parts <- numParts
+        }
+
         # assume continuous unless otherwise told
          elapsed <- 0
          self$start_times <- vector("numeric",length(self$audiofiles))
@@ -70,11 +78,18 @@ Audiorecord <- R6::R6Class(
      },
      duration = function() {
        if (length(self$audiofiles) > 0) {
-         return(last(self$start_times) + last(self$audiofiles)$duration())
+         return(last(self$start_times)[[1]] + last(self$audiofiles)[[1]]$duration())
        }
      },
      candidateFileIndexForTime = function(t) {
-       min(which(self$start_times > t)) - 1
+       lastAfter <- min(which(self$start_times > t))
+       if (lastAfter == 1) {
+         return(1)
+       } else if (is.infinite(lastAfter)) {
+         return(length(self$start_times))
+       } else {
+         return(lastAfter-1)
+       }
      },
      hasObservationAtTime = function(t) {
        ind <- candidateFileIndexForTime(t)
@@ -115,11 +130,11 @@ Audiorecord <- R6::R6Class(
 
 
 Audiorecord$set("public","spectrogramFrame",
-function(from=0,fftSize,fftHop,frameWidth,frameHeight)
+function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
 {
   numWindows <- frameWidth  # one (vertical line of) pixel(s) for each fft window
-  numAudioFrames <- fftSize + fftHop * (numWindows - 1)
-  to <- from + numAudioFrames
+  #numAudioFrames <- fftSize + fftHop * (numWindows - 1)
+  #to <- from + numAudioFrames
 
   # TODO: If period is missing segments, just paste together spectrogram bits
   # N <- self$observedFrameCountBetween(from=1, to=numAudioFrames)
@@ -130,9 +145,10 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight)
   tmp <- from
   candInd <- self$candidateFileIndexForTime(tmp)
   remainingWindows <- numWindows
-  while(tmp < to && is.finite(candInd)) {
+  while(remainingWindows > 0 && is.finite(candInd)) {
     af <- self$audiofiles[[candInd]]
-    af$calculateSpectrogram(n=fftSize,h=fftHop) # will also loadAudio if needed
+    af$calculateSpectrogram(n=fftSize, h=fftHop, ch=channel) # will also loadAudio if needed
+    cat(sprintf("Calculating spectrogram for part %d of %d\n", candInd, length(self$audiofiles)))
 
     # append this spectrogram to the output
     if (is.null(output)) { output <- copy(af$spectrogram[1:remainingWindows,]) }
@@ -144,7 +160,67 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight)
     af$unloadAudio()
   }
 
-  return(output)
+  return(list("start_time"=from,"end_time"=tmp, "power"=output))
 
+})
+
+
+spectroFrame2tiff <- function(frm, filename, contrast=1) {
+  A <- t(as.matrix(frm$power[,-c("spectroBlock")]))
+  AX <- max(A)
+  AA <- A
+  if (abs(AX) > 0.0)
+    AA <- A / AX
+
+  AA <- AA^contrast
+  n <- dim(A)[[1]]
+  m <- dim(A)[[2]]
+  AAA <- AA[n:1,]
+  rasta <- raster(nrows=n, ncols=m)
+  rasta <- setValues(rasta, AAA)
+  bricka <- brick(rasta)
+
+  tokens <- unlist(strsplit(filename,"[.]"))
+  ext <- last(tokens)
+  if (ext != "tif" && ext != "tiff")
+    filename <- paste0(filename,".tif")
+
+  writeRaster(bricka, filename, overwrite=TRUE)
+
+}
+
+
+Audiorecord$set("public","spectrogramMovie",
+function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, frameHeight, channel=1, contrast=1)
+{
+  # create a folder for all the tiff images
+  mainIdentifier <- function(path) {
+    tokens <- unlist(strsplit(path,"[/]"))
+    bits <- unlist(strsplit(tokens[[length(tokens)]],"[.]"))
+    paste0(bits[1:(length(bits)-1)],collapse = ".")
+  }
+
+  fname <- mainIdentifier(filepath)
+  tokens <- unlist(strsplit(filepath,"[.]"))
+  dirname <- paste0(tokens[1:(length(tokens)-1)], collapse=".")
+  dir.create(dirname)
+
+  frameNumber <- 0
+  while (from < to) {
+    frm <- self$spectrogramFrame(from=from, fftSize=fftSize, fftHop=fftHop, frameWidth=frameWidth, frameHeight=frameHeight, channel=channel)
+    imgFilename <- sprintf("%s_%06d", fname, frameNumber)
+    tifPath <- paste0(dirname, "/", imgFilename, ".tif")
+    # if (stringr::str_sub(imgPath,stringr::str_length(imgPath)-4) == ".tiff")
+    #   imgPath <- stringr::str_sub(imgPath,end=-2)
+    #
+    #tifPath <- stringr::str_replace(imgPath,".tif{1,2}$",".tif")
+    spectroFrame2tiff(frm,tifPath,contrast)
+    tifImg <- image_read(tifPath)
+    gifPath <- stringr::str_replace(tifPath,".tif{1,2}$",".gif")
+    image_write(tifImg, gifPath)
+    frameNumber <- frameNumber + 1
+    from <- frm$end_time + 0.001
+    cat(sprintf("Exported frame covering %d secs to %d secs, of a total %d secs\n", floor(frm$start_time), floor(frm$end_time), floor(to)))
+  }
 })
 
