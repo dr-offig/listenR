@@ -78,7 +78,7 @@ Audiorecord <- R6::R6Class(
      },
      duration = function() {
        if (length(self$audiofiles) > 0) {
-         return(last(self$start_times)[[1]] + last(self$audiofiles)[[1]]$duration())
+         return(self$start_times[[length(self$start_times)]] + (self$audiofiles[[length(self$audiofiles)]])$duration())
        }
      },
      candidateFileIndexForTime = function(t) {
