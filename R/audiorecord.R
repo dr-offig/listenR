@@ -160,11 +160,31 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
     af$calculateSpectrogram(n=fftSize, h=fftHop, ch=channel) # will also loadAudio if needed
     cat(sprintf("Calculating spectrogram for part %d of %d\n", candInd, length(self$audiofiles)))
 
-    # append this spectrogram to the output
-    if (is.null(output)) { output <- copy(af$spectrogram[1:remainingWindows,]) }
-    else { output <- rbind(output,af$spectrogram[1:remainingWindows,]) }
+    # Now that we have a particular audio file, calculate
+    # various time-sample conversions
+    # see if the whole frame sits inside this audio part
+    remainingAudioFrames <- fftSize + fftHop * (remainingWindows - 1)
+    #fftWindowDuration <- fftSize / af$samplerate
 
-    tmp <- tmp + af$duration(); # TODO: think about this for gapped files
+    # all of these 'remaining' measures are relative to the audiofile
+    remainingStartTimeOffset <- tmp - self$start_times[[candInd]]
+    remainingEndTimeOffset <- remainingStartTimeOffset + (remainingAudioFrames / af$samplerate)
+    remainingStartFFTWindow <- af$convert(remainingStartTimeOffset,from="seconds", to="spectral_blocks")
+    remainingEndFFTWindow <- af$convert(remainingEndTimeOffset,from="seconds", to="spectral_blocks")
+
+    if (remainingStartTimeOffset < 0) {
+      # TODO: think about this for gapped files
+
+    } else if (remainingEndTimeOffset > af$duration()) {
+      if (is.null(output)) { output <- copy(af$spectrogram[remainingStartFFTWindow:NROW(af$spectrogram),]) }
+      else { output <- rbind(output, af$spectrogram[remainingStartFFTWindow:NROW(af$spectrogram),]) }
+      tmp <- tmp + af$duration(); # TODO: think about this for gapped files
+    } else {
+      if (is.null(output)) { output <- copy(af$spectrogram[remainingStartFFTWindow:remainingEndFFTWindow,]) }
+      else { output <- rbind(output, af$spectrogram[remainingStartFFTWindow:remainingEndFFTWindow,]) }
+      tmp <- tmp + remainingEndTimeOffset - remainingStartTimeOffset
+    }
+
     candInd <- max(candInd+1,self$candidateFileIndexForTime(tmp))
     remainingWindows <- numWindows - dim(output)[[1]]
     af$unloadAudio()
@@ -218,7 +238,7 @@ function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, fram
   self$copyToFolder(dirname)
 
   frameNumber <- 0
-  tifs <- list()
+  #tifs <- list()
   while (from < to) {
     frm <- self$spectrogramFrame(from=from, fftSize=fftSize, fftHop=fftHop, frameWidth=frameWidth, frameHeight=frameHeight, channel=channel)
     imgFilename <- sprintf("%s_%06d", fname, frameNumber)
@@ -229,7 +249,7 @@ function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, fram
     #tifPath <- stringr::str_replace(imgPath,".tif{1,2}$",".tif")
     spectroFrame2tiff(frm,tifPath,contrast)
     tifImg <- image_read(tifPath)
-    tifs <- c(tifs,tifImg)
+    #tifs <- c(tifs,tifImg)
     gifPath <- stringr::str_replace(tifPath,".tif{1,2}$",".gif")
     image_write(tifImg, gifPath, format='gif')
     frameNumber <- frameNumber + 1
@@ -247,9 +267,9 @@ function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, fram
   dev.off()
   image_write(blankImg,blankImgPath,format='gif')
 
-  fullImage <- image_append(do.call(c,tifs))
-  fullImgPath <- paste0(dirname, "/", fname, ".gif")
-  image_write(fullImage, fullImgPath, format='gif')
+  # fullImage <- image_append(do.call(c,tifs))
+  # fullImgPath <- paste0(dirname, "/", fname, ".gif")
+  # image_write(fullImage, fullImgPath, format='gif')
 
   return(TRUE)
 })

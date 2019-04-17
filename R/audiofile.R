@@ -50,6 +50,7 @@ Audiofile <- R6::R6Class("Audiofile",
                     spectrogramWindowSize = 512,
                     spectrogramHop = 256,
                     spectrogramWindow = NULL, #signal::hanning,
+                    spectrogramChannel = 1,
                     constQCalculated = FALSE,
                     constQWindowSize = 2048,
                     constQHop = 1024,
@@ -93,7 +94,9 @@ Audiofile <- R6::R6Class("Audiofile",
                         self$spectrogram <- copy(arg$spectrogram)
                         self$spectrogramCalculated <- arg$spectrogramCalculated
                         self$spectrogramWindowSize <- arg$spectrogramWindowSize
+                        self$spectrogramHop <- arg$spectrogramHop
                         self$spectrogramWindow <- arg$spectrogramWindow
+                        self$spectrogramChannel <- arg$spectrogramChannel
                         self$envelope <- copy(arg$envelope)
                         self$constQ <- copy(arg$constQ)
                         self$DTDWT <- copy(arg$DTDWT)
@@ -152,25 +155,32 @@ Audiofile <- R6::R6Class("Audiofile",
                       self$envelope <- self$audioData[,lapply(.SD,rms),by=envBlock,.SDcols=-c("frame")]
                       self$envelopeCalculated = TRUE
                     },
-                    calculateSpectrogram = function(n=512,h=256,wt=signal::hanning,ch=1) {
+                    calculateSpectrogram = function(n=512,h=256,wt=signal::hanning,ch=1,force=FALSE) {
                       if (!self$audioLoaded) { self$loadAudio() }
-                      m <- floor((self$frames - n) / h)
-                      self$audioData[, spectroBlock := (((frame + (h/2) - (n/2)) %/% h)+1)]
-                      gt <- function(i) {
-                        x <- unlist(self$audioData[(i*h + 1):(i*h + n),ch:ch],use.names=FALSE)
-                        wx <- x * wt(n)
-                        return(fft(wx) / length(wx))
+                      if (!self$spectrogramCalculated ||
+                          n!=self$spectrogramWindowSize ||
+                          h!=self$spectrogramHop ||
+                          ch!=self@spectrogramChannel)
+                      {
+                        m <- floor((self$frames - n) / h)
+                        self$audioData[, spectroBlock := (((frame + (h/2) - (n/2)) %/% h)+1)]
+                        gt <- function(i) {
+                          x <- unlist(self$audioData[(i*h + 1):(i*h + n),ch:ch],use.names=FALSE)
+                          wx <- x * wt(n)
+                          return(fft(wx) / length(wx))
+                        }
+                        fullTransform <- lapply(0:m,gt)
+                        powerSpectrum <- sapply(fullTransform,function(z) { abs(z)^2 })
+                        halfway <- floor(dim(powerSpectrum)[1] / 2)
+                        self$spectrogram <- as.data.table(t(powerSpectrum[1:halfway,]))
+                        self$spectrogram[, spectroBlock := .I]
+                        setnames(self$spectrogram,1:halfway,as.character(1:halfway))
+                        self$spectrogramWindowSize <- n
+                        self$spectrogramHop <- h
+                        self$spectrogramWindow <- wt  # signal::hanning
+                        self$spectrogramChannel <- ch
+                        self$spectrogramCalculated <- TRUE
                       }
-                      fullTransform <- lapply(0:m,gt)
-                      powerSpectrum <- sapply(fullTransform,function(z) { abs(z)^2 })
-                      halfway <- floor(dim(powerSpectrum)[1] / 2)
-                      self$spectrogram <- as.data.table(t(powerSpectrum[1:halfway,]))
-                      self$spectrogram[, spectroBlock := .I]
-                      setnames(self$spectrogram,1:halfway,as.character(1:halfway))
-                      self$spectrogramWindowSize <- n
-                      self$spectrogramHop <- h
-                      self$spectrogramWindow <- wt  # signal::hanning
-                      self$spectrogramCalculated <- TRUE
                     },
                     calculateConstQ = function(n=2048,h=1024,ch=1,minFreq=60,maxFreq=10000,bins=4) {
                       if (!self$audioLoaded) { self$loadAudio() }
