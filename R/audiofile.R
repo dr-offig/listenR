@@ -125,7 +125,7 @@ Audiofile <- R6::R6Class("Audiofile",
                       self$audioData <- as.data.table(self$waveObject@.Data)
                       names(self$audioData) <- paste0("channel",as.character(seq(from=1,to=self$channels,by=1)))
                       self$audioData[, frame:=.I]
-                      selfaudioLoaded <- TRUE
+                      self$audioLoaded <- TRUE
                       self$loadMsg()
                     },
                     unloadAudio = function() {
