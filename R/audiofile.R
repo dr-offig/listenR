@@ -64,7 +64,6 @@ Audiofile <- R6::R6Class("Audiofile",
                         # nothing to do
                       } else if (!is.null(filename)) {
                         if (hasArg("from")) { self$offsetIntoFile <- from }
-                        else { cat("No from argument") }
                         stopReadingAt <- Inf; if (hasArg("to")) { stopReadingAt <- to }
                         fname <- filename
                         self$filename <- fname
@@ -116,7 +115,8 @@ Audiofile <- R6::R6Class("Audiofile",
                     },
                     loadAudio = function() {
                       #theoreticalFrames <- self$frames
-                      self$waveObject <- tuneR::normalize(tuneR::readWave(self$filename, from = self$offsetIntoFile+1, to=self$offsetIntoFile + self$frames, toWaveMC = TRUE),rescale=FALSE)
+                      self$waveObject <- tuneR::normalize(tuneR::readWave(self$filename, from = self$offsetIntoFile+1, to=self$offsetIntoFile + self$frames, toWaveMC = TRUE), pcm=FALSE, rescale=FALSE)
+                      colnames(self$waveObject) <- tuneR::MCnames$name[1:ncol(self$waveObject@.Data)]
                       self$frames <- dim(self$waveObject@.Data)[[1]]
                       #loadedFrames <- self$frames
                       #cat(sprintf("Loaded %d out of a theoretical %d frames", theoreticalFrames, loadedFrames))
@@ -732,8 +732,7 @@ Audiofile$set("public","wave", function(units="samples",
                                           else if (units == "spectral_blocks") { self$frames / self$spectrogramWindowSize }
                                           else if (units == "cq_blocks") { self$frames / self$constQWindowSize }
                                           else if (units == "env_blocks") { self$frames / self$envelopeWindowSize }
-                                          else { self$frames },
-                                          ch=1)
+                                          else { self$frames })
 {
   if (!self$audioLoaded) { self$loadAudio() }
 
@@ -742,7 +741,9 @@ Audiofile$set("public","wave", function(units="samples",
   end_sample <- self$convert(t=to, from=units, to="samples")
   #chanName <- self$get_channel_names()[[ch]]
   #self$audioData[(start_sample:end_sample), ..chanName]
-  tuneR::extractWave(self$waveObject,from=start_sample,to=end_sample,units="samples")
+  output <- tuneR::extractWave(self$waveObject,from=start_sample,to=end_sample,units="samples")
+  colnames(output@.Data) <- tuneR::MCnames$name[1:ncol(output@.Data)]
+  return(output)
 })
 
 
