@@ -17,7 +17,7 @@ determineLoadFrames <- function(fname) {
   #samplerate <- waveHeader$samplerate
 
   # see if there is enough memory to load the full audio data
-  ma <- mem_available();
+  ma <- as.numeric(mem_available());
   mr <- mem_required(frames=frames, channels=channels)
   N <- ceiling(mr / ma)
   L <- frames %/% N
