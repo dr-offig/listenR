@@ -154,8 +154,13 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
   # Read in as many files as needed to fill the data.table
   tmp <- from
   candInd <- self$candidateFileIndexForTime(tmp)
+  lastCandInd <- candInd
   remainingWindows <- numWindows
   while(remainingWindows > 0 && is.finite(candInd)) {
+    if (lastCandInd != candInd) {
+      af$unloadAudio()
+      lastCandInd <- candInd
+    }
     af <- self$audiofiles[[candInd]]
     af$calculateSpectrogram(n=fftSize, h=fftHop, ch=channel) # will also loadAudio if needed
     cat(sprintf("Calculating spectrogram for part %d of %d\n", candInd, length(self$audiofiles)))
@@ -187,7 +192,6 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
 
     candInd <- max(candInd+1,self$candidateFileIndexForTime(tmp))
     remainingWindows <- numWindows - dim(output)[[1]]
-    af$unloadAudio()
   }
 
   return(list("start_time"=from,"end_time"=tmp, "power"=output))
