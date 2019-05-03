@@ -154,7 +154,7 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
   # Read in as many files as needed to fill the data.table
   tmp <- from
   candInd <- self$candidateFileIndexForTime(tmp)
-  #lastCandInd <- candInd
+  lastCandInd <- candInd
   remainingWindows <- numWindows
   while(remainingWindows > 0 && is.finite(candInd)) {
     if (lastCandInd != candInd) {
