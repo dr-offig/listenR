@@ -160,7 +160,7 @@ Audiofile <- R6::R6Class("Audiofile",
                       if (!self$spectrogramCalculated ||
                           n!=self$spectrogramWindowSize ||
                           h!=self$spectrogramHop ||
-                          ch!=self@spectrogramChannel)
+                          ch!=self$spectrogramChannel)
                       {
                         m <- floor((self$frames - n) / h)
                         self$audioData[, spectroBlock := (((frame + (h/2) - (n/2)) %/% h)+1)]
@@ -471,7 +471,7 @@ Audiofile$set("public", "plot.spectrogram",
                        trans="identity", contrast=1)
 {
   if (!self$audioLoaded) { self$loadAudio() }
-  if ((!self$spectrogramCalculated) || n!=self$spectrogramWindowSize || h!=self$spectrogramHop)
+  if ((!self$spectrogramCalculated) || n!=self$spectrogramWindowSize || h!=self$spectrogramHop || ch!=self$spectrogramChannel)
     self$calculateSpectrogram(n=n, h=h, wt=wt, ch=ch)
 
   start_sample <- if(units=="samples") { from }
@@ -609,11 +609,13 @@ Audiofile$set("public", "plot.constQ", function(units="seconds",from=0,
 
 
 
-Audiofile$set("public","powermap", function(n=self$spectrogramWindowSize, h=self$spectrogramHop, w=self$spectrogramWindow)
+Audiofile$set("public","powermap", function(n=self$spectrogramWindowSize, h=self$spectrogramHop,
+                                            w=self$spectrogramWindow, ch=self$spectrogramChannel)
 {
   if (!self$audioLoaded) { self$loadAudio() }
-  if ( (!self$spectrogramCalculated) || n!=self$spectrogramWindowSize || h!=self$spectrogramHop || w!=self$spectrogramWindow )
-    self$calculateSpectrogram(n=n,h=h,w=w)
+  if ( (!self$spectrogramCalculated) || n!=self$spectrogramWindowSize ||
+       h!=self$spectrogramHop || w!=self$spectrogramWindow || ch != self$spectrogramChannel)
+    self$calculateSpectrogram(n=n,h=h,w=w,ch=ch)
   nz <- self$spectrogram[,c(-1)]
   d <- data.table::melt(nz, id.vars="spectroBlock",variable.factor=FALSE)
   setnames(d,c("spectroBlock","variable","value"),c("time_bin","freq_bin","power"))
