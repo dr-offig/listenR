@@ -158,7 +158,7 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
   remainingWindows <- numWindows
   while(remainingWindows > 0 && is.finite(candInd)) {
     if (lastCandInd != candInd) {
-      oldAf <- self$audioFiles[[lastCandInd]]
+      oldAf <- self$audiofiles[[lastCandInd]]
       oldAf$unloadAudio()
       lastCandInd <- candInd
     }
