@@ -191,8 +191,9 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
       tmp <- tmp + remainingEndTimeOffset - remainingStartTimeOffset
     }
 
-    candInd <- max(candInd+1,self$candidateFileIndexForTime(tmp))
-    remainingWindows <- numWindows - dim(output)[[1]]
+    #candInd <- max(candInd+1,self$candidateFileIndexForTime(tmp))
+    candInd <- self$candidateFileIndexForTime(tmp)
+    remainingWindows <- numWindows - max(1,dim(output)[[1]])
   }
 
   return(list("start_time"=from,"end_time"=tmp, "power"=output))
