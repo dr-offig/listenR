@@ -162,6 +162,7 @@ Audiofile <- R6::R6Class("Audiofile",
                           h!=self$spectrogramHop ||
                           ch!=self$spectrogramChannel)
                       {
+                        cat(sprintf("Calculating Spectrogram for file %s part %d\n", self$filename, self$part))
                         m <- floor((self$frames - n) / h)
                         self$audioData[, spectroBlock := (((frame + (h/2) - (n/2)) %/% h)+1)]
                         gt <- function(i) {
@@ -241,7 +242,7 @@ Audiofile$set("public","convert", function(t=0, from="seconds", to="samples") {
   if(to == "samples") {
     if (from == "seconds") { t * self$samplerate }
     else if (from == "hms") { as.numeric(t) * self$samplerate }
-    else if (from == "spectral_blocks") { t * self$spectrogramHop }
+    else if (from == "spectral_blocks") { (self$spectrogramWindowSize / 2) + t * (self$spectrogramHop - 1) }
     else if (from == "cq_blocks") { t * self$constQHop }
     else if (from == "env_blocks") { t * self$envelopeWindowSize }
     else { t }
@@ -250,11 +251,11 @@ Audiofile$set("public","convert", function(t=0, from="seconds", to="samples") {
   } else if (to == "hms") {
     as.hms(self$convert(t,from=from, to="seconds"))
   } else if (to == "spectral_blocks") {
-    self$convert(t,from=from, to="samples") / self$spectrogramHop
+    floor(self$convert(t,from=from, to="samples") / self$spectrogramHop) + 1
   } else if (to == "cq_blocks") {
-    self$convert(t,from=from, to="samples") / self$constQHop
+    floor(self$convert(t,from=from, to="samples") / self$constQHop) + 1
   } else if (to == "env_blocks") {
-    self$convert(t,from=from, to="samples") / self$envelopeWindowSize
+    floor(self$convert(t,from=from, to="samples") / self$envelopeWindowSize) + 1
   } else { t }
 
 })

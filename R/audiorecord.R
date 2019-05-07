@@ -82,13 +82,13 @@ Audiorecord <- R6::R6Class(
        }
      },
      candidateFileIndexForTime = function(t) {
-       lastAfter <- min(which(self$start_times > t))
-       if (lastAfter == 1) {
+       firstAfter <- min(which(self$start_times > t))
+       if (firstAfter == 1) {
          return(1)
-       } else if (is.infinite(lastAfter)) {
+       } else if (is.infinite(firstAfter)) {
          return(length(self$start_times))
        } else {
-         return(lastAfter-1)
+         return(firstAfter-1)
        }
      },
      hasObservationAtTime = function(t) {
@@ -142,6 +142,7 @@ Audiorecord <- R6::R6Class(
 Audiorecord$set("public","spectrogramFrame",
 function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
 {
+  #cat(sprintf("\n\n----------------------\nRendering frame from time: %f seconds\n",from))
   numWindows <- frameWidth  # one (vertical line of) pixel(s) for each fft window
   #numAudioFrames <- fftSize + fftHop * (numWindows - 1)
   #to <- from + numAudioFrames
@@ -157,6 +158,7 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
   lastCandInd <- candInd
   remainingWindows <- numWindows
   while(remainingWindows > 0 && is.finite(candInd)) {
+    #cat(sprintf("%d out of %d windows remaining to be processed\n", remainingWindows, numWindows))
     if (lastCandInd != candInd) {
       oldAf <- self$audiofiles[[lastCandInd]]
       oldAf$unloadAudio()
@@ -164,7 +166,7 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
     }
     af <- self$audiofiles[[candInd]]
     af$calculateSpectrogram(n=fftSize, h=fftHop, ch=channel) # will also loadAudio if needed
-    cat(sprintf("Calculating spectrogram for part %d of %d\n", candInd, length(self$audiofiles)))
+    #cat(sprintf("Calculating spectrogram for part %d of %d\n", candInd, length(self$audiofiles)))
 
     # Now that we have a particular audio file, calculate
     # various time-sample conversions
@@ -176,24 +178,31 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
     remainingStartTimeOffset <- tmp - self$start_times[[candInd]]
     remainingEndTimeOffset <- remainingStartTimeOffset + (remainingAudioFrames / af$samplerate)
     remainingStartFFTWindow <- af$convert(remainingStartTimeOffset,from="seconds", to="spectral_blocks")
-    remainingEndFFTWindow <- af$convert(remainingEndTimeOffset,from="seconds", to="spectral_blocks")
+    remainingEndFFTWindow <- af$convert(remainingEndTimeOffset,from="seconds", to="spectral_blocks") - 1
+
+    #cat(sprintf("Absolute start time is %f. Relative start %f. Relative end %f\n", tmp, remainingStartTimeOffset, remainingEndTimeOffset))
 
     if (remainingStartTimeOffset < 0) {
       # TODO: think about this for gapped files
-
+      cat(sprintf("Whoops, negative start time of %d seconds from the beginning of this file requested\n", remainingStartTimeOffset))
     } else if (remainingEndTimeOffset > af$duration()) {
+      #cat(sprintf("Requested relative endtime of %f secs beyond the %f secs endtime of this audio part %d\n", remainingEndTimeOffset, af$duration(), af$part))
       if (is.null(output)) { output <- copy(af$spectrogram[remainingStartFFTWindow:NROW(af$spectrogram),]) }
       else { output <- rbind(output, af$spectrogram[remainingStartFFTWindow:NROW(af$spectrogram),]) }
-      tmp <- tmp + af$duration(); # TODO: think about this for gapped files
+      #cat(sprintf("added %d fft windows from %d to %d of audio part %d\n", 1 + (NROW(af$spectrogram) - remainingStartFFTWindow),remainingStartFFTWindow, NROW(af$spectrogram), af$part))
+      tmp <- tmp + (af$duration() - remainingStartTimeOffset); # TODO: think about this for gapped files
+      if (candInd == length(self$audiofiles)) { break }
     } else {
       if (is.null(output)) { output <- copy(af$spectrogram[remainingStartFFTWindow:remainingEndFFTWindow,]) }
       else { output <- rbind(output, af$spectrogram[remainingStartFFTWindow:remainingEndFFTWindow,]) }
+      #cat(sprintf("Added %d fft windows from %d to %d of audio part %d\n", 1 + (remainingEndFFTWindow - remainingStartFFTWindow), remainingStartFFTWindow, remainingEndFFTWindow, af$part))
       tmp <- tmp + remainingEndTimeOffset - remainingStartTimeOffset
     }
 
     #candInd <- max(candInd+1,self$candidateFileIndexForTime(tmp))
     candInd <- self$candidateFileIndexForTime(tmp)
     remainingWindows <- numWindows - max(1,dim(output)[[1]])
+    #cat(sprintf("Reduced the number of remaining windows to %d out of %d\n", remainingWindows, numWindows))
   }
 
   return(list("start_time"=from,"end_time"=tmp, "power"=output))
@@ -260,7 +269,7 @@ function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, fram
     image_write(tifImg, gifPath, format='gif')
     frameNumber <- frameNumber + 1
     from <- frm$end_time + 0.001
-    cat(sprintf("Exported frame covering %d secs to %d secs, of a total %d secs\n", floor(frm$start_time), floor(frm$end_time), floor(to)))
+    cat(sprintf("Exported frame covering %f secs to %f secs, of a total %f secs\n", frm$start_time, frm$end_time, to))
   }
 
   img1filename <- sprintf("%s_%06d", fname, 0)
