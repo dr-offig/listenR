@@ -310,7 +310,7 @@ function(filepath, from=0, to=self$duration(),
     #
     #tifPath <- stringr::str_replace(imgPath,".tif{1,2}$",".tif")
     if (is.null(frm$power)) { break }
-    spectroFrame2tiff(frm,tifPath,contrast)
+    spectroFrame2tiff(frm, tifPath, contrast, normalisation)
     tifImg <- image_read(tifPath)
     #tifs <- c(tifs,tifImg)
     gifPath <- stringr::str_replace(tifPath,".tif{1,2}$",".gif")
