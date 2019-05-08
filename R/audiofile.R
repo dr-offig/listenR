@@ -148,6 +148,26 @@ Audiofile <- R6::R6Class("Audiofile",
                     loadMsg = function() {
                       cat(paste(sep=" ", "Loaded audio file", basename(self$filename), "part", self$part, "of", self$parts, "\n"))
                     },
+                    spect_window_centre = function(i) {
+                       ((self$spectrogramWindowSize / 2) + (i-1) * self$spectrogramHop) / self$samplerate
+                    },
+                    spect_window_start = function(i) {
+                      self$spect_window_centre(i) - self$spectrogramWindowSize / (2 * self$samplerate)
+                    },
+                    spect_window_end = function(i) {
+                      self$spect_window_centre(i) + self$spectrogramWindowSize / (2 * self$samplerate)
+                    },
+                    spect_windows_containing_offset_frame = function(frm) {
+                      output <- integer()
+                      g <- floor(frm / self$spectrogramHop) + 1
+                      if (self$spect_window_start(g+1) <= frm) { output[[1]] <- g; output[[2]] <- g+1 }
+                      else if (g > 0 && self$spect_window_end(g-1) > frm) { output[[1]] <- g-1; output[[2]] <- g }
+                      else { output[[1]] <- g }
+                      return(output)
+                    },
+                    spect_windows_containing_offset_time = function(t) {
+                      self$spect_windows_containing_offset_frame(t * self$samplerate)
+                    },
                     calculateEnvelope = function(h=self$envelopeWindowSize) {
                       if (!self$audioLoaded) { self$loadAudio() }
                       self$envelopeWindowSize <- h
@@ -259,6 +279,7 @@ Audiofile$set("public","convert", function(t=0, from="seconds", to="samples") {
   } else { t }
 
 })
+
 
 
 
