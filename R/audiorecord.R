@@ -226,14 +226,23 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
 })
 
 
-spectroFrame2tiff <- function(frm, filename, contrast=1) {
+spectroFrame2tiff <- function(frm, filename, contrast=0.5, normalisation) {
   A <- t(as.matrix(frm$power[,-c("spectroBlock")]))
-  AX <- max(A)
   AA <- A
-  if (abs(AX) > 0.0)
-    AA <- A / AX
 
+  # scaling factor
+  if (missing(normalisation)) {
+    AX <- max(A)
+    if (abs(AX) > 0.0)
+      AA <- A / AX
+  } else {
+    AA <- A / normalisation
+  }
+
+  # contrast
   AA <- AA^contrast
+
+  # rasterise
   n <- dim(A)[[1]]
   m <- dim(A)[[2]]
   AAA <- AA[n:1,]
@@ -241,6 +250,7 @@ spectroFrame2tiff <- function(frm, filename, contrast=1) {
   rasta <- setValues(rasta, AAA)
   bricka <- brick(rasta)
 
+  # save to file
   tokens <- unlist(strsplit(filename,"[.]"))
   ext <- last(tokens)
   if (ext != "tif" && ext != "tiff")
@@ -252,7 +262,11 @@ spectroFrame2tiff <- function(frm, filename, contrast=1) {
 
 
 Audiorecord$set("public","spectrogramMovie",
-function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, frameHeight, channel=1, contrast=1)
+function(filepath, from=0, to=self$duration(),
+         fftSize, fftHop,
+         frameWidth, frameHeight,
+         channel=1, contrast=1,
+         normalisation)
 {
   # create a folder for all the tiff images
   mainIdentifier <- function(path) {
@@ -275,9 +289,20 @@ function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, fram
   frameEnds <- numeric(128)
   #storyboard <- data.frame(frame=integer(),imgFile=character(),start=numeric(),end=numeric(),stringsAsFactors = FALSE)
 
+  if (missing(normalisation)) {
+    # use average power from the first file for normalisation
+    ff <- self$audiofiles[[1]]
+    ff$calculateSpectrogram(n=fftSize, h=fftHop, ch=channel)
+    normalisation <- max(as.matrix(ff$spectrogram[,-c("spectroBlock")]))
+    if (normalisation == 0.0) { normalisation <- 1.0 }
+  }
+
   #tifs <- list()
   while (from < to) {
-    frm <- self$spectrogramFrame(from=from, fftSize=fftSize, fftHop=fftHop, frameWidth=frameWidth, frameHeight=frameHeight, channel=channel)
+    frm <- self$spectrogramFrame(from=from,
+                                 fftSize=fftSize, fftHop=fftHop,
+                                 frameWidth=frameWidth, frameHeight=frameHeight,
+                                 channel=channel)
     imgFilename <- sprintf("%s_%06d", fname, frameNumber)
     tifPath <- paste0(dirname, "/", imgFilename, ".tif")
     # if (stringr::str_sub(imgPath,stringr::str_length(imgPath)-4) == ".tiff")
