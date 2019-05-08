@@ -193,26 +193,29 @@ function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
     if (remainingStartFFTWindow > LAST_WINDOW_IN_FILE) {
       # TODO: think about this for gapped files
       cat(sprintf("Whoops! Requested relative first fft window %d beyond the available %d for this audio part %d\n", remainingEndFFTWindow, LAST_WINDOW_IN_FILE, af$part))
-      tmp <- self$start_times[[candInd]] + af$duration() + 0.001
-
+      tmp <- self$start_times[[candInd]] + af$duration() # + 0.001
+      if (candInd >= length(self$audiofiles)) { break }
+      candInd <- candInd + 1
     } else if (remainingEndFFTWindow > LAST_WINDOW_IN_FILE) {
       cat(sprintf("Requested relative fft window %d beyond the available %d for this audio part %d\n", remainingEndFFTWindow, LAST_WINDOW_IN_FILE, af$part))
       if (is.null(output)) { output <- copy(af$spectrogram[remainingStartFFTWindow:LAST_WINDOW_IN_FILE,]) }
       else { output <- rbind(output, af$spectrogram[remainingStartFFTWindow:LAST_WINDOW_IN_FILE,]) }
       cat(sprintf("added %d fft windows from %d to %d of audio part %d\n", 1 + LAST_WINDOW_IN_FILE - remainingStartFFTWindow,remainingStartFFTWindow, LAST_WINDOW_IN_FILE, af$part))
-      tmp <- self$start_times[[candInd]] + af$spect_window_end(LAST_WINDOW_IN_FILE) + 0.001
+      tmp <- self$start_times[[candInd]] + af$spect_window_end(LAST_WINDOW_IN_FILE) # + 0.001
       #tmp + (af$duration() - remainingStartTimeOffset); # TODO: think about this for gapped files
-      if (candInd == length(self$audiofiles)) { break }
+      if (candInd >= length(self$audiofiles)) { break }
+      candInd <- candInd + 1
     } else {
       if (is.null(output)) { output <- copy(af$spectrogram[remainingStartFFTWindow:remainingEndFFTWindow,]) }
       else { output <- rbind(output, af$spectrogram[remainingStartFFTWindow:remainingEndFFTWindow,]) }
       cat(sprintf("Added %d fft windows from %d to %d of audio part %d\n", 1 + (remainingEndFFTWindow - remainingStartFFTWindow), remainingStartFFTWindow, remainingEndFFTWindow, af$part))
       #tmp <- tmp + remainingEndTimeOffset - remainingStartTimeOffset
-      tmp <- self$start_times[[candInd]] + af$spect_window_end(remainingEndFFTWindow) + 0.001
+      tmp <- self$start_times[[candInd]] + af$spect_window_end(remainingEndFFTWindow) # + 0.001
+      candInd <- self$candidateFileIndexForTime(tmp)
     }
 
     #candInd <- max(candInd+1,self$candidateFileIndexForTime(tmp))
-    candInd <- self$candidateFileIndexForTime(tmp)
+
     if (is.null(output)) { remainingWindows <- 0 }
     else { remainingWindows <- numWindows - dim(output)[[1]] }
     cat(sprintf("Reduced the number of remaining windows to %d out of %d\n", remainingWindows, numWindows))
@@ -288,7 +291,7 @@ function(filepath, from=0, to=self$duration(), fftSize, fftHop, frameWidth, fram
     gifPath <- stringr::str_replace(tifPath,".tif{1,2}$",".gif")
     image_write(tifImg, gifPath, format='gif')
     frameNumber <- frameNumber + 1
-    from <- frm$end_time + 0.001
+    from <- frm$end_time # + 0.001
 
     # add an entry for the storyboard
     frameIDs[[frameNumber]] <- frameNumber
