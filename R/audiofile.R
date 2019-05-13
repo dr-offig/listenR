@@ -797,4 +797,3 @@ Audiofile$set("public", "applySeewave", function(analysis=seewave::ACI, n=4096, 
   fullAnalysis <- sapply(A:B,gt)
 
 })
-

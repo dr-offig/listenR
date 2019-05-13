@@ -348,3 +348,37 @@ function(filepath, from=0, to=self$duration(),
 
   return(TRUE)
 })
+
+
+Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1) {
+  ind1 <- self$candidateFileIndexForTime(from)
+  ind2 <- self$candidateFileIndexForTime(to)
+
+  # FIXME: check if requested times are out of record
+
+  af <- self$audiofiles[[ind1]]
+  af$loadAudio()
+  startRelative <- from - self$start_times[[ind1]]
+  stopRelative <- min(to-self$start_times[[cc]], af$duration)
+  stopAbsolute <- stopRelative + self$start_times[[ind1]]
+  outputWave <- af$wave(units = "seconds", from = startRelative, to = stopRelative)
+
+
+  cc <- ind1+1
+  tmp = stopAbsolute
+  while(cc <= ind2) {
+    af <- self$audiofiles[[cc]]
+    af$loadAudio()
+    startRelative <- tmp - self$start_times[[cc]]
+    stopRelative <- min(to-self$start_times[[cc]], af$duration)
+    stopAbsolute <- stopRelative + self$start_times[[cc]]
+    nextWave <- af$wave(units = "seconds", from = startRelative, to = stopRelative)
+    outputWave <- bind(outputWave, nextWave)
+    tmp <- stopAbsolute
+    cc <- cc+1
+  }
+
+  writeWave(filepath, outputWave)
+
+})
+
