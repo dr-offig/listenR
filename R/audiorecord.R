@@ -359,7 +359,7 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
   af <- self$audiofiles[[ind1]]
   af$loadAudio()
   startRelative <- from - self$start_times[[ind1]]
-  stopRelative <- min(to-self$start_times[[cc]], af$duration)
+  stopRelative <- min(to-self$start_times[[ind1]], af$duration())
   stopAbsolute <- stopRelative + self$start_times[[ind1]]
   outputWave <- af$wave(units = "seconds", from = startRelative, to = stopRelative)
 
@@ -370,7 +370,7 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
     af <- self$audiofiles[[cc]]
     af$loadAudio()
     startRelative <- tmp - self$start_times[[cc]]
-    stopRelative <- min(to-self$start_times[[cc]], af$duration)
+    stopRelative <- min(to-self$start_times[[cc]], af$duration())
     stopAbsolute <- stopRelative + self$start_times[[cc]]
     nextWave <- af$wave(units = "seconds", from = startRelative, to = stopRelative)
     outputWave <- bind(outputWave, nextWave)
@@ -378,7 +378,104 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
     cc <- cc+1
   }
 
-  writeWave(filepath, outputWave)
+  writeWave(normalize(outputWave, rescale=FALSE), filepath)
 
 })
+
+
+
+Audiorecord$set("public","spectrogramRegions",
+                function(filepath, tbl,
+                         fftSize, fftHop,
+                         frameWidth, frameHeight,
+                         channel=1, contrast=1,
+                         normalisation, startRow)
+                {
+                  if (missing(normalisation)) {
+                    # use average power from the first file for normalisation
+                    ff <- self$audiofiles[[1]]
+                    ff$calculateSpectrogram(n=fftSize, h=fftHop, ch=channel)
+                    normalisation <- max(as.matrix(ff$spectrogram[,-c("spectroBlock")]))
+                    if (normalisation == 0.0) { normalisation <- 1.0 }
+                  }
+
+                  # create a top level folder
+                  mainIdentifier <- function(path) {
+                    tokens <- unlist(strsplit(path,"[/]"))
+                    bits <- unlist(strsplit(tokens[[length(tokens)]],"[.]"))
+                    paste0(bits[1:(length(bits)-1)],collapse = ".")
+                  }
+
+                  fname <- mainIdentifier(filepath)
+                  tokens <- unlist(strsplit(filepath,"[.]"))
+                  dirname <- paste0(tokens[1:(length(tokens)-1)], collapse=".")
+                  dir.create(dirname)
+                  self$copyToFolder(dirname)
+
+                  cc <- startRow
+                  N <- NROW(tbl)
+
+                  while(cc <= N) {
+
+                      # create a folder for this region
+                      regionDirname <- paste0(dirname, "/", "REGION", as.character(cc), "_", tbl[cc,comment])
+                      dir.create(regionDirname)
+                      frameNumber <- 0
+                      frameIDs <- integer(128)
+                      imgFiles <- character(128)
+                      frameStarts <- numeric(128)
+                      frameEnds <- numeric(128)
+
+                      from <- tbl[cc,timeA]
+                      to <- tbl[cc,timeB]
+                      while (from < to) {
+                        frm <- self$spectrogramFrame(from=from,
+                                                     fftSize=fftSize, fftHop=fftHop,
+                                                     frameWidth=frameWidth, frameHeight=frameHeight,
+                                                     channel=channel)
+                        imgFilename <- sprintf("%s_%06d", fname, frameNumber)
+                        tifPath <- paste0(regionDirname, "/", imgFilename, ".tif")
+                        if (is.null(frm$power)) { break }
+                        spectroFrame2tiff(frm, tifPath, contrast, normalisation)
+                        tifImg <- image_read(tifPath)
+
+                        gifPath <- stringr::str_replace(tifPath,".tif{1,2}$",".gif")
+                        image_write(tifImg, gifPath, format='gif')
+                        frameNumber <- frameNumber + 1
+                        from <- frm$end_time # + 0.001
+
+                        # copy the audio snippet for this frame
+                        snippetPath <- paste0(regionDirname, "/", imgFilename, ".wav")
+                        self$renderAudioSnippet(snippetPath, frm$start_time, frm$end_time)
+
+                        # add an entry for the storyboard
+                        frameIDs[[frameNumber]] <- frameNumber
+                        imgFiles[[frameNumber]] <- paste0(imgFilename,".gif")
+                        frameStarts[[frameNumber]] <- frm$start_time
+                        frameEnds[[frameNumber]] <- frm$end_time
+                        cat(sprintf("Exported frame covering %f secs to %f secs, of a total %f secs\n", frm$start_time, frm$end_time, to))
+                      }
+
+                      # img1filename <- sprintf("%s_%06d", fname, 0)
+                      # img1path <- paste0(dirname, "/", img1filename, ".gif")
+                      # blankImgFilename <- sprintf("%s_blank", fname, 0)
+                      # blankImgPath <- paste0(dirname, "/", blankImgFilename, ".gif")
+                      # imgdev <- image_draw(image_read(img1path))
+                      # rect(0,0,frameWidth,frameHeight,col='black')
+                      # blankImg <- image_capture()
+                      # dev.off()
+                      # image_write(blankImg,blankImgPath,format='gif')
+
+                      # write the storyboard to file
+                      storyboard <- data.frame(ID=frameIDs, image=imgFiles, start=frameStarts, end=frameEnds, stringsAsFactors = FALSE)
+                      storyboardFilename <- sprintf("%s_storyboard", fname, 0)
+                      storyboardPath <- paste0(regionDirname, "/", storyboardFilename, ".csv")
+                      write.csv(storyboard, storyboardPath, quote=FALSE, row.names = FALSE)
+
+                      cc <- cc + 1
+                    }
+
+                  return(TRUE)
+                })
+
 
