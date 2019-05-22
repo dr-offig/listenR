@@ -4,7 +4,7 @@ Title: Machine Listening
 Version: 0.1.0
 Authors@R: person("Dr", "Offig", email = "dr.offig@offig.com",role = c("aut", "cre"))
 Description: Tools for ecoacoustic analysis.
-Depends: R (>= 3.5.0), data.table (>= 1.9.8), ggplot2, raster, magick
+Depends: R (>= 3.5.0), data.table (>= 1.9.8), ggplot2, raster, magick, av
 License: The Unlicense
 Encoding: UTF-8
 LazyData: true

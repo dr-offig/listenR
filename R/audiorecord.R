@@ -31,18 +31,38 @@ determineLoadFrames <- function(fname) {
 }
 
 
+## Utilities ##
+mainIdentifier <- function(path) {
+  tokens <- unlist(strsplit(path,"[/]"))
+  bits <- unlist(strsplit(tokens[[length(tokens)]],"[.]"))
+  paste0(bits[1:(length(bits)-1)],collapse = ".")
+}
+
+directoryOfFile <- function(path) {
+  tokens <- unlist(strsplit(path,"[/]"))
+  paste0(tokens[1:(length(tokens)-1)],collapse="/")
+}
+
+correspondingWavFilename <- function(path) {
+  paste0(directoryOfFile(path), "/" , mainIdentifier(path), ".wav")
+}
+
+
+## Main class ##
 Audiorecord <- R6::R6Class(
   "Audiorecord",
    public = list(
      audiofiles = NULL,
      start_times = NULL,
-     initialize = function(filenames=NULL, ...) {
+     initialize = function(filenames=NULL, samplerate=48000, ...) {
        arguments <- list(...)
        if (is.null(filenames) && length(arguments) == 0) {
          # default constructor
          # nothing to do
        } else if (!is.null(filenames)) {
-         fnames <- filenames
+
+         fnames <- unique(filenames)
+         fnames <- lapply(fnames, function(fname) { convertIntoWav(fname,samplerate) })
          loadList <- do.call(rbind,lapply(fnames, function(fname) { determineLoadFrames(fname) }))
          #str(loadList)
 
@@ -269,11 +289,11 @@ function(filepath, from=0, to=self$duration(),
          normalisation)
 {
   # create a folder for all the tiff images
-  mainIdentifier <- function(path) {
-    tokens <- unlist(strsplit(path,"[/]"))
-    bits <- unlist(strsplit(tokens[[length(tokens)]],"[.]"))
-    paste0(bits[1:(length(bits)-1)],collapse = ".")
-  }
+  # mainIdentifier <- function(path) {
+  #   tokens <- unlist(strsplit(path,"[/]"))
+  #   bits <- unlist(strsplit(tokens[[length(tokens)]],"[.]"))
+  #   paste0(bits[1:(length(bits)-1)],collapse = ".")
+  # }
 
   fname <- mainIdentifier(filepath)
   tokens <- unlist(strsplit(filepath,"[.]"))
@@ -400,11 +420,11 @@ Audiorecord$set("public","spectrogramRegions",
                   }
 
                   # create a top level folder
-                  mainIdentifier <- function(path) {
-                    tokens <- unlist(strsplit(path,"[/]"))
-                    bits <- unlist(strsplit(tokens[[length(tokens)]],"[.]"))
-                    paste0(bits[1:(length(bits)-1)],collapse = ".")
-                  }
+                  # mainIdentifier <- function(path) {
+                  #   tokens <- unlist(strsplit(path,"[/]"))
+                  #   bits <- unlist(strsplit(tokens[[length(tokens)]],"[.]"))
+                  #   paste0(bits[1:(length(bits)-1)],collapse = ".")
+                  # }
 
                   fname <- mainIdentifier(filepath)
                   tokens <- unlist(strsplit(filepath,"[.]"))
@@ -477,5 +497,40 @@ Audiorecord$set("public","spectrogramRegions",
 
                   return(TRUE)
                 })
+
+
+####### conversion into wav files #######
+convertIntoWav <- function(fname, targetSR=48000) {
+
+  ## does this contain any sort of audio file?
+  info <- av_video_info(fname)
+  if (is.null(info$audio))
+    return(NA)
+
+  if (info$audio$codec == 'pcm_s16le' && info$audio$sample_rate == targetSR)
+    return(fname)
+
+  ## we will create a .wav file of the same base filename
+  outName <- correspondingWavFilename(fname)
+
+  ## also check if there is already a corresponding wav
+  ## file at the requested sample rate
+  if (file.exists(outName)) {
+    info <- av_video_info(fname)
+    if (!is.null(info$audio) && info$audio$codec == 'pcm_s16le' && info$audio$sample_rate == targetSR)
+      return(outName)
+  }
+
+  # otherwise we will reencode using ffmpeg (if available)
+  fnd <- Sys.which('ffmpeg')
+  if (fnd['ffmpeg'][1] == "")
+    return(NA)
+
+  cmdArgs <- c('-i', fname, '-acodec pcm_s16le', '-ar', as.character(targetSR), outName)
+  system2('ffmpeg', cmdArgs)
+  return(outName)
+
+}
+
 
 
