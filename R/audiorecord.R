@@ -296,8 +296,10 @@ function(filepath, from=0, to=self$duration(),
   # }
 
   fname <- mainIdentifier(filepath)
-  tokens <- unlist(strsplit(filepath,"[.]"))
-  dirname <- paste0(tokens[1:(length(tokens)-1)], collapse=".")
+  #tokens <- unlist(strsplit(filepath,"[.]"))
+  #dirname <- paste0(tokens[1:(length(tokens)-1)], collapse=".")
+  enclosingDir <- directoryOfFile(filepath)
+  dirname <- paste(sep="/", enclosingDir, fname)
   dir.create(dirname)
 
   self$copyToFolder(dirname)
