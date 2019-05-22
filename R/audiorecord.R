@@ -385,7 +385,6 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
   stopAbsolute <- stopRelative + self$start_times[[ind1]]
   outputWave <- af$wave(units = "seconds", from = startRelative, to = stopRelative)
 
-
   cc <- ind1+1
   tmp = stopAbsolute
   while(cc <= ind2) {
@@ -403,7 +402,6 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
   writeWave(normalize(outputWave, rescale=FALSE), filepath)
 
 })
-
 
 
 Audiorecord$set("public","spectrogramRegions",
@@ -519,8 +517,19 @@ convertIntoWav <- function(fname, targetSR=48000) {
   ## file at the requested sample rate
   if (file.exists(outName)) {
     info <- av_video_info(fname)
-    if (!is.null(info$audio) && info$audio$codec == 'pcm_s16le' && info$audio$sample_rate == targetSR)
-      return(outName)
+
+    if (!is.null(info$audio)) {
+      if (info$audio$codec == 'pcm_s16le' && info$audio$sample_rate == targetSR) {
+        return(outName)
+      } else {
+        # make a copy of the original file
+        strSR <- paste0(format(info$audio$sample_rate / 1000),"k")
+        bname <- mainIdentifier(outName)
+        bdir <- directoryOfFile(outName)
+        bpath <- paste0(bdir, "/", bname, ".wav")
+        file.copy(from=outName,to=bpath)
+      }
+    }
   }
 
   # otherwise we will reencode using ffmpeg (if available)
@@ -528,7 +537,7 @@ convertIntoWav <- function(fname, targetSR=48000) {
   if (fnd['ffmpeg'][1] == "")
     return(NA)
 
-  cmdArgs <- c('-i', fname, '-acodec pcm_s16le', '-ar', as.character(targetSR), outName)
+  cmdArgs <- c('-y', '-i', fname, '-acodec pcm_s16le', '-ar', as.character(targetSR), outName)
   system2('ffmpeg', cmdArgs)
   return(outName)
 
