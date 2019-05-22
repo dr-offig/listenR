@@ -302,7 +302,8 @@ function(filepath, from=0, to=self$duration(),
   dirname <- paste(sep="/", enclosingDir, fname)
   dir.create(dirname)
 
-  self$copyToFolder(dirname)
+  ### no need for this anymore because audiorecord already creates a wav file as needed
+  # self$copyToFolder(dirname)
 
   frameNumber <- 0
   frameIDs <- integer(128)
