@@ -364,7 +364,7 @@ function(filepath, from=0, to=self$duration(),
   # image_write(fullImage, fullImgPath, format='gif')
 
   # write the storyboard to file
-  storyboard <- data.frame(ID=frameIDs, image=imgFiles, start=frameStarts, end=frameEnds, stringsAsFactors = FALSE)
+  storyboard <- data.frame(ID=frameIDs[1:frameNumber], image=imgFiles[1:frameNumber], start=frameStarts[1:frameNumber], end=frameEnds[1:frameNumber], stringsAsFactors = FALSE)
   storyboardFilename <- sprintf("%s_storyboard", fname, 0)
   storyboardPath <- paste0(dirname, "/", storyboardFilename, ".csv")
   write.csv(storyboard, storyboardPath, quote=FALSE, row.names = FALSE)
