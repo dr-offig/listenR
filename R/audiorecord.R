@@ -353,7 +353,7 @@ function(filepath, from=0, to=self$duration(),
   img1path <- paste0(dirname, "/", img1filename, ".gif")
   blankImgFilename <- sprintf("%s_blank", fname, 0)
   blankImgPath <- paste0(dirname, "/", blankImgFilename, ".gif")
-  imgdev <- magick::image_draw(image_read(img1path))
+  imgdev <- magick::image_draw(magick::image_read(img1path))
   rect(0,0,frameWidth,frameHeight,col='black')
   blankImg <- magick::image_capture()
   dev.off()
