@@ -517,7 +517,7 @@ convertIntoWav <- function(fname, targetSR=48000) {
   ## also check if there is already a corresponding wav
   ## file at the requested sample rate
   if (file.exists(outName)) {
-    info <- av::av_video_info(fname)
+    info <- av::av_video_info(outName)
 
     if (!is.null(info$audio)) {
       if (info$audio$codec == 'pcm_s16le' && info$audio$sample_rate == targetSR) {
