@@ -266,9 +266,9 @@ spectroFrame2tiff <- function(frm, filename, contrast=0.5, normalisation) {
   n <- dim(A)[[1]]
   m <- dim(A)[[2]]
   AAA <- AA[n:1,]
-  rasta <- raster(nrows=n, ncols=m)
-  rasta <- setValues(rasta, AAA)
-  bricka <- brick(rasta)
+  rasta <- raster::raster(nrows=n, ncols=m)
+  rasta <- raster::setValues(rasta, AAA)
+  bricka <- raster::brick(rasta)
 
   # save to file
   tokens <- unlist(strsplit(filename,"[.]"))
@@ -276,7 +276,7 @@ spectroFrame2tiff <- function(frm, filename, contrast=0.5, normalisation) {
   if (ext != "tif" && ext != "tiff")
     filename <- paste0(filename,".tif")
 
-  writeRaster(bricka, filename, overwrite=TRUE)
+  raster::writeRaster(bricka, filename, overwrite=TRUE)
 
 }
 
@@ -334,10 +334,10 @@ function(filepath, from=0, to=self$duration(),
     #tifPath <- stringr::str_replace(imgPath,".tif{1,2}$",".tif")
     if (is.null(frm$power)) { break }
     spectroFrame2tiff(frm, tifPath, contrast, normalisation)
-    tifImg <- image_read(tifPath)
+    tifImg <- magick::image_read(tifPath)
     #tifs <- c(tifs,tifImg)
     gifPath <- stringr::str_replace(tifPath,".tif{1,2}$",".gif")
-    image_write(tifImg, gifPath, format='gif')
+    magick::image_write(tifImg, gifPath, format='gif')
     frameNumber <- frameNumber + 1
     from <- frm$end_time # + 0.001
 
@@ -353,11 +353,11 @@ function(filepath, from=0, to=self$duration(),
   img1path <- paste0(dirname, "/", img1filename, ".gif")
   blankImgFilename <- sprintf("%s_blank", fname, 0)
   blankImgPath <- paste0(dirname, "/", blankImgFilename, ".gif")
-  imgdev <- image_draw(image_read(img1path))
+  imgdev <- magick::image_draw(image_read(img1path))
   rect(0,0,frameWidth,frameHeight,col='black')
-  blankImg <- image_capture()
+  blankImg <- magick::image_capture()
   dev.off()
-  image_write(blankImg,blankImgPath,format='gif')
+  magick::image_write(blankImg,blankImgPath,format='gif')
 
   # fullImage <- image_append(do.call(c,tifs))
   # fullImgPath <- paste0(dirname, "/", fname, ".gif")
@@ -400,7 +400,7 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
     cc <- cc+1
   }
 
-  writeWave(normalize(outputWave, rescale=FALSE), filepath)
+  tuneR::writeWave(tuneR::normalize(outputWave, rescale=FALSE), filepath)
 
 })
 
@@ -458,10 +458,10 @@ Audiorecord$set("public","spectrogramRegions",
                         tifPath <- paste0(regionDirname, "/", imgFilename, ".tif")
                         if (is.null(frm$power)) { break }
                         spectroFrame2tiff(frm, tifPath, contrast, normalisation)
-                        tifImg <- image_read(tifPath)
+                        tifImg <- magick::image_read(tifPath)
 
                         gifPath <- stringr::str_replace(tifPath,".tif{1,2}$",".gif")
-                        image_write(tifImg, gifPath, format='gif')
+                        magick::image_write(tifImg, gifPath, format='gif')
                         frameNumber <- frameNumber + 1
                         from <- frm$end_time # + 0.001
 
@@ -504,7 +504,7 @@ Audiorecord$set("public","spectrogramRegions",
 convertIntoWav <- function(fname, targetSR=48000) {
 
   ## does this contain any sort of audio file?
-  info <- av_video_info(fname)
+  info <- av::av_video_info(fname)
   if (is.null(info$audio))
     return(NA)
 
@@ -517,7 +517,7 @@ convertIntoWav <- function(fname, targetSR=48000) {
   ## also check if there is already a corresponding wav
   ## file at the requested sample rate
   if (file.exists(outName)) {
-    info <- av_video_info(fname)
+    info <- av::av_video_info(fname)
 
     if (!is.null(info$audio)) {
       if (info$audio$codec == 'pcm_s16le' && info$audio$sample_rate == targetSR) {

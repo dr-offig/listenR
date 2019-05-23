@@ -1,2 +1,5 @@
 import(data.table)
+importFrom("graphics", "plot")
+importFrom("ggplot2","ggplot")
+importFrom("stats", "sd")
 exportPattern("^[[:alpha:]]+")

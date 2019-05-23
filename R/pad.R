@@ -19,6 +19,6 @@ plot.shade <- function(f)
 {
   g <- Dx(f)
   h <- g / sd(g)
-  ggplot(data.frame(x=seq_along(f),y=f,w=h), aes(x,y,col=abs(w))) + geom_line(size=1)
+  ggplot2::ggplot(data.frame(x=seq_along(f),y=f,w=h), ggplot2::aes(x,y,col=abs(w))) + ggplot2::geom_line(size=1)
 }
 

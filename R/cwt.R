@@ -19,7 +19,7 @@ freqAt <- function(index,num_voices,sr) {
 
 cwt_analyser <- function(noctave,nvoice) {
   function(x) {
-    tf <- cwt(x,noctave,nvoice,plot=FALSE)
+    tf <- Rwave::cwt(x,noctave,nvoice,plot=FALSE)
     q <- colSums(Mod(tf))
   }
 }
