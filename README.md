@@ -10,6 +10,6 @@ ListenR requires some external libraries to be present before installation.
 
 Once these external dependencies are installed then from an R console type
 ```code
-install.packages("devtools")
-devtools::install_github("dr-offig/listenR")
+> install.packages("devtools")
+> devtools::install_github("dr-offig/listenR")
 ```
