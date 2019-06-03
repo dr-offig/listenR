@@ -380,7 +380,9 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
   # FIXME: check if requested times are out of record
 
   af <- self$audiofiles[[ind1]]
-  af$loadAudio()
+  if (!af$audioLoaded)
+    af$loadAudio()
+
   startRelative <- from - self$start_times[[ind1]]
   stopRelative <- min(to-self$start_times[[ind1]], af$duration())
   stopAbsolute <- stopRelative + self$start_times[[ind1]]

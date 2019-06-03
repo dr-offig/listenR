@@ -17,7 +17,6 @@ Imports:
   stringr,
   R6,
   Rwave,
-  rgdal,
   plotly,
   magick, 
   av,
