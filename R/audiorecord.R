@@ -300,7 +300,7 @@ function(filepath, from=0, to=self$duration(),
   #dirname <- paste0(tokens[1:(length(tokens)-1)], collapse=".")
   enclosingDir <- directoryOfFile(filepath)
   dirname <- paste(sep="/", enclosingDir, fname)
-  dir.create(dirname)
+  dir.create(dirname, recursive=TRUE)
 
   ### no need for this anymore because audiorecord already creates a wav file as needed
   # self$copyToFolder(dirname)
