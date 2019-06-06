@@ -1,9 +1,15 @@
-# Reference class abstraction for caching large audio files
+###### Reference class abstraction for caching large audio files ######
 #.datatable.aware = TRUE
 
-# Utilities
+# Utilities. These have no roxygen entries because they shadow
+# function from other packages
+
+# Root Mean Square
+# param x:  a numeric vector
+# returns: numeric, the root mean square of the elements of x
 rms <- function(x) { sqrt(mean(x^2)) }
 
+# Elapsed Time
 dt <- function(clockTime) {
   cc <- 0; ss <- 0; mm <- 0; hh <- 0; dd <- 0
   tokens1 <- unlist(strsplit(clockTime,".",fixed=TRUE))
@@ -23,7 +29,80 @@ dt <- function(clockTime) {
 }
 
 
-# Main class
+
+#' Audiofile
+#'
+#' An R6 Audiofile Class for audio manipulations on large files.
+#'
+#' The purpose of this class is to facilitate working with large
+#' audio files, up to several gigabytes. Existing packages such
+#' as tuneR follow the typical R paradigm of in-memory operations
+#' and copy-on-modify semantics. This is impractical for large
+#' audio files. The Audiofile class makes use of the fact that
+#' R6 classes are implemented as R environments, and are passed
+#' by reference. Furthermore, inside the Audiofile class, the
+#' actual audio data is stored in a data.table, which is an extension
+#' of a data.frame that also uses pass-by-reference semantics.
+#' Thus the Audiofile class allows for memory efficient in-place
+#' manipulation of audio data.
+#'
+#' @section Usage:
+#' \preformatted{af = Audiofile$new(filepath = NULL, from = 0, to = Inf)
+#'
+#' af$loadAudio()
+#' af$unloadAudio()
+#'
+#' af$calculateEnvelope(h = self$envelopeWindowSize)
+#' af$calculateSpectrogram(n = 512, h = 256, wt = signal::hanning, ch = 1, force = FALSE)
+#' af$calculateConstQ(n = 2048, h = 1024, ch = 1, minFreq = 60, maxFreq = 10000, bins = 4)
+#' af$calculateDualTree = function(J = 4, ch = 1)
+#'
+#' }
+#'
+#' @section Arguments:
+#' \code{port} The port to use for communication with Python.
+#'
+#' \code{path} The path to the Python executable.
+#'
+#' \code{...} Commands to run or named variables to set in the Python process.
+#'
+#' \code{file} File containing Python code to execute.
+#'
+#' \code{force} If \code{TRUE}, force the Python process to terminate
+#'   using a sytem call.
+#'
+#' @section Methods:
+#' \code{$new()} Initialize a Python interface. The Python process is not
+#'   started automatically.
+#'
+#' \code{$start()} Start the Python process. The Python process runs
+#'   asynchronously.
+#'
+#' \code{$running} Check if the Python process is running.
+#'
+#' \code{$exec()} Execute the specified Python
+#'   commands and invisibly return printed Python output (if any).
+#'   Alternatively, the \code{file} argument can be used to specify
+#'   a file containing Python code. Note that there will be no return
+#'   value unless an explicit Python \code{print} statement is executed.
+#'
+#' \code{$stop()} Stop the Python process by sending a request to the
+#'   Python process. If \code{force = TRUE}, the process will be
+#'   terminated using a system call instead.
+#'
+#' @name PythonEnv
+#' @examples
+#' pypath = Sys.which('python')
+#' if(nchar(pypath) > 0) {
+#'   py = PythonEnv$new(path = pypath, port = 6011)
+#'   py$start()
+#'   py$running
+#'   py$stop(force = TRUE)
+#' } else
+#' message("No Python distribution found!")
+NULL
+
+#' @export
 Audiofile <- R6::R6Class("Audiofile",
                   public = list(
                     filename = NULL,
@@ -68,19 +147,11 @@ Audiofile <- R6::R6Class("Audiofile",
                         fname <- filename
                         self$filename <- fname
                         self$waveHeader <- tuneR::readWave(fname, header=TRUE, toWaveMC=TRUE)
-                        #self$waveObject <- tuneR::normalize(tuneR::readWave(fname, from = offsetIntoFile+1, to=stopReadingAt, toWaveMC = TRUE),rescale=FALSE)
                         self$frames <- min(self$waveHeader$samples, stopReadingAt) - self$offsetIntoFile
                         self$channels <- self$waveHeader$channels
                         self$samplerate <- self$waveHeader$sample.rate
-                        #self$audioData <- as.data.table(self$waveObject@.Data)
-                        #names(self$audioData) <- paste0("channel",as.character(seq(from=1,to=self$channels,by=1)))
-                        #self$audioData[, frame:=.I]
-                        # self$audioData[, time:=as.POSIXct(((frame-1) / ..self$samplerate) + ..self$startDateTime, origin = "1970-01-01", tz="UTC")]
-                        # setcolorder(self$audioData,"time")
                         self$spectrogramCalculated <- FALSE
-                        #self$spectrogramWindowSize <- 512
                         self$spectrogramWindow <- signal::hanning
-                        #self$calculateEnvelope()
                         self$initMsg()
                       } else if ("Audiofile" %in% class(args[[1]])) { # actually copies the data
                         arg <- args[[1]]
@@ -114,12 +185,9 @@ Audiofile <- R6::R6Class("Audiofile",
                       }
                     },
                     loadAudio = function() {
-                      #theoreticalFrames <- self$frames
                       self$waveObject <- tuneR::normalize(tuneR::readWave(self$filename, from = self$offsetIntoFile+1, to=self$offsetIntoFile + self$frames, toWaveMC = TRUE), pcm=FALSE, rescale=FALSE)
                       colnames(self$waveObject) <- tuneR::MCnames$name[1:ncol(self$waveObject@.Data)]
                       self$frames <- dim(self$waveObject@.Data)[[1]]
-                      #loadedFrames <- self$frames
-                      #cat(sprintf("Loaded %d out of a theoretical %d frames", theoreticalFrames, loadedFrames))
                       self$channels <- dim(self$waveObject@.Data)[[2]]
                       self$samplerate <- self$waveObject@samp.rate
                       self$audioData <- as.data.table(self$waveObject@.Data)

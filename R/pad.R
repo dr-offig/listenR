@@ -15,7 +15,7 @@ Dx <- function(x,forwards=TRUE)
 }
 
 
-plot.shade <- function(f)
+shade <- function(f)
 {
   g <- Dx(f)
   h <- g / sd(g)
