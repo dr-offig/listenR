@@ -19,7 +19,6 @@ Imports:
   Rwave,
   plotly,
   magick, 
-  av,
   hms,
   e1071,
   pryr,

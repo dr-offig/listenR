@@ -519,12 +519,35 @@ Audiorecord$set("public","spectrogramRegions",
 ####### conversion into wav files #######
 convertIntoWav <- function(fname, targetSR=48000) {
 
-  ## does this contain any sort of audio file?
-  info <- av::av_video_info(fname)
-  if (is.null(info$audio))
+  fndprobe <- Sys.which('ffprobe')
+  fndmpeg <- Sys.which('ffmpeg')
+  if (fndprobe['ffprobe'][1] == "" || fndmpeg['ffmpeg'][1] == "")
     return(NA)
 
-  if (info$audio$codec == 'pcm_s16le' && info$audio$sample_rate == targetSR)
+  ## helper functions
+  ffInfoFieldValue <- function(info, fieldName) {
+    N <- length(info)
+    for (i in 1:N) {
+      line <- info[[i]]
+      #print(line)
+      tokens <- unlist(strsplit(line,"="))
+      if (length(tokens) > 1)
+        if (tokens[[1]] == fieldName)
+          return(tokens[[2]])
+    }
+    return(NA)
+  }
+
+  ## does this contain any sort of audio file?
+  cmdArgs <- c('-hide_banner', '-show_streams', '-select_streams', 'a', fname)
+  info <- system2('ffprobe',cmdArgs,stdout=TRUE)
+  # info <- av::av_video_info(fname)
+  # if (is.null(info$audio))
+  #   return(NA)
+  if (length(info) == 0)
+    return(NA)
+
+  if (ffInfoFieldValue(info, 'codec_name') == 'pcm_s16le' && ffInfoFieldValue(info, 'sample_rate') == targetSR)
     return(fname)
 
   ## we will create a .wav file of the same base filename
@@ -533,14 +556,16 @@ convertIntoWav <- function(fname, targetSR=48000) {
   ## also check if there is already a corresponding wav
   ## file at the requested sample rate
   if (file.exists(outName)) {
-    info <- av::av_video_info(outName)
+    #info <- av::av_video_info(outName)
+    cmdArgs <- c('-hide_banner', '-show_streams', '-select_streams', 'a', outName)
+    info <- system2('ffprobe',cmdArgs,stdout=TRUE)
 
-    if (!is.null(info$audio)) {
-      if (info$audio$codec == 'pcm_s16le' && info$audio$sample_rate == targetSR) {
+    if (length(info) != 0) {
+      if (ffInfoFieldValue(info, 'codec_name') == 'pcm_s16le' && ffInfoFieldValue(info, 'sample_rate') == targetSR) {
         return(outName)
       } else {
         # make a copy of the original file
-        strSR <- paste0(format(info$audio$sample_rate / 1000),"k")
+        strSR <- paste0(format(as.numeric(ffInfoFieldValue(info, 'sample_rate')) / 1000),"k")
         bname <- mainIdentifier(outName)
         bdir <- directoryOfFile(outName)
         bpath <- paste0(bdir, "/", bname, ".wav")
@@ -550,10 +575,6 @@ convertIntoWav <- function(fname, targetSR=48000) {
   }
 
   # otherwise we will reencode using ffmpeg (if available)
-  fnd <- Sys.which('ffmpeg')
-  if (fnd['ffmpeg'][1] == "")
-    return(NA)
-
   cmdArgs <- c('-y', '-i', fname, '-acodec pcm_s16le', '-ar', as.character(targetSR), outName)
   system2('ffmpeg', cmdArgs)
   return(outName)
