@@ -1,8 +1,11 @@
 ###### Reference class abstraction for caching large audio files ######
 #.datatable.aware = TRUE
 
-# Utilities. These have no roxygen entries because they shadow
+# Utilities. Some of these have no roxygen entries because they shadow
 # function from other packages
+
+# Interpret hms time string into seconds
+as.seconds <- function(hmsStr) { as.numeric(as.hms(hmsStr)) }
 
 # Root Mean Square
 # param x:  a numeric vector
@@ -60,7 +63,7 @@ dt <- function(clockTime) {
 #' }
 #'
 #' @section Arguments:
-#' \code{port} The port to use for communication with Python.
+#' \code{filepath} The full path.
 #'
 #' \code{path} The path to the Python executable.
 #'

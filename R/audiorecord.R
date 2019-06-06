@@ -162,6 +162,10 @@ Audiorecord <- R6::R6Class(
 Audiorecord$set("public","spectrogramFrame",
 function(from=0,fftSize,fftHop,frameWidth,frameHeight, channel=1)
 {
+  # 'from' may be passed in as an hms time string
+  if (is.character(from))
+    from <- as.numeric(as.hms(from))
+
   cat(sprintf("\n\n----------------------\nRendering frame from time: %f seconds\n",from))
   numWindows <- frameWidth  # one (vertical line of) pixel(s) for each fft window
   #numAudioFrames <- fftSize + fftHop * (numWindows - 1)
@@ -336,28 +340,28 @@ function(filepath, from=0, to=self$duration(),
     spectroFrame2tiff(frm, tifPath, contrast, normalisation)
     tifImg <- magick::image_read(tifPath)
     #tifs <- c(tifs,tifImg)
-    gifPath <- stringr::str_replace(tifPath,".tif{1,2}$",".gif")
-    magick::image_write(tifImg, gifPath, format='gif')
+    pngPath <- stringr::str_replace(tifPath,".tif{1,2}$",".png")
+    magick::image_write(tifImg, pngPath, format='png')
     frameNumber <- frameNumber + 1
     from <- frm$end_time # + 0.001
 
     # add an entry for the storyboard
     frameIDs[[frameNumber]] <- frameNumber
-    imgFiles[[frameNumber]] <- paste0(imgFilename,".gif")
+    imgFiles[[frameNumber]] <- paste0(imgFilename,".png")
     frameStarts[[frameNumber]] <- frm$start_time
     frameEnds[[frameNumber]] <- frm$end_time
     cat(sprintf("Exported frame covering %f secs to %f secs, of a total %f secs\n", frm$start_time, frm$end_time, to))
   }
 
   img1filename <- sprintf("%s_%06d", fname, 0)
-  img1path <- paste0(dirname, "/", img1filename, ".gif")
+  img1path <- paste0(dirname, "/", img1filename, ".png")
   blankImgFilename <- sprintf("%s_blank", fname, 0)
-  blankImgPath <- paste0(dirname, "/", blankImgFilename, ".gif")
+  blankImgPath <- paste0(dirname, "/", blankImgFilename, ".png")
   imgdev <- magick::image_draw(magick::image_read(img1path))
   rect(0,0,frameWidth,frameHeight,col='black')
   blankImg <- magick::image_capture()
   dev.off()
-  magick::image_write(blankImg,blankImgPath,format='gif')
+  magick::image_write(blankImg,blankImgPath,format='png')
 
   # fullImage <- image_append(do.call(c,tifs))
   # fullImgPath <- paste0(dirname, "/", fname, ".gif")
@@ -368,6 +372,16 @@ function(filepath, from=0, to=self$duration(),
   storyboardFilename <- sprintf("%s_storyboard", fname, 0)
   storyboardPath <- paste0(dirname, "/", storyboardFilename, ".csv")
   write.csv(storyboard, storyboardPath, quote=FALSE, row.names = FALSE)
+
+  # Now turn the image sequence into an mp4 with ffmpeg (if available)
+  fnd <- Sys.which('ffmpeg')
+  if (fnd['ffmpeg'][1] != "") {
+    frameDur <- as.numeric(frameEnds[[1]]) - as.numeric(frameStarts[[1]])
+    frameRate <- 1 / frameDur
+    # ffmpeg -f image2 -framerate 0.0448 -i '20190210_CLAY001_SPECT_%06d.png' -y -r 30 test.mp4
+    cmdArgs <- c('-f','image2', '-framerate', frameRate, '-i', paste0(dirname, "/", fname, '_%06d.png'), '-y', '-r', 30.0, filepath)
+    system2('ffmpeg', cmdArgs)
+  }
 
   return(TRUE)
 })
@@ -462,8 +476,8 @@ Audiorecord$set("public","spectrogramRegions",
                         spectroFrame2tiff(frm, tifPath, contrast, normalisation)
                         tifImg <- magick::image_read(tifPath)
 
-                        gifPath <- stringr::str_replace(tifPath,".tif{1,2}$",".gif")
-                        magick::image_write(tifImg, gifPath, format='gif')
+                        pngPath <- stringr::str_replace(tifPath,".tif{1,2}$",".png")
+                        magick::image_write(tifImg, pngPath, format='png')
                         frameNumber <- frameNumber + 1
                         from <- frm$end_time # + 0.001
 
@@ -473,7 +487,7 @@ Audiorecord$set("public","spectrogramRegions",
 
                         # add an entry for the storyboard
                         frameIDs[[frameNumber]] <- frameNumber
-                        imgFiles[[frameNumber]] <- paste0(imgFilename,".gif")
+                        imgFiles[[frameNumber]] <- paste0(imgFilename,".png")
                         frameStarts[[frameNumber]] <- frm$start_time
                         frameEnds[[frameNumber]] <- frm$end_time
                         cat(sprintf("Exported frame covering %f secs to %f secs, of a total %f secs\n", frm$start_time, frm$end_time, to))
