@@ -421,12 +421,30 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
 })
 
 
+Audiorecord$set("public","renderAudioSnippets",function(baseName, targetDir, tbl) {
+
+  if (!dir.exists(targetDir))
+    dir.create(targetDir,recursive = TRUE)
+
+  renderSnippet <- function(from, to) {
+    startStr <- gsub(":","-",format(hms::as.hms(from)),fixed=TRUE)
+    endStr <- gsub(":","-",format(hms::as.hms(to)),fixed=TRUE)
+    snippetFilePath <- paste0(targetDir, '/', baseName, '_', startStr, '_', endStr, '.wav')
+    self$renderAudioSnippet(snippetFilePath,from,to)
+  }
+
+  mapply(renderSnippet, tbl$timeA, tbl$timeB)
+
+})
+
+
+
 Audiorecord$set("public","spectrogramRegions",
                 function(filepath, tbl,
                          fftSize, fftHop,
                          frameWidth, frameHeight,
                          channel=1, contrast=1,
-                         normalisation, startRow)
+                         normalisation, startRow, offset=0)
                 {
                   if (missing(normalisation)) {
                     # use average power from the first file for normalisation

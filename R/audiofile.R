@@ -5,7 +5,7 @@
 # function from other packages
 
 # Interpret hms time string into seconds
-as.seconds <- function(hmsStr) { as.numeric(as.hms(hmsStr)) }
+as.seconds <- function(hmsStr) { as.numeric(hms::as.hms(hmsStr)) }
 
 # Root Mean Square
 # param x:  a numeric vector
@@ -61,48 +61,6 @@ dt <- function(clockTime) {
 #' af$calculateDualTree = function(J = 4, ch = 1)
 #'
 #' }
-#'
-#' @section Arguments:
-#' \code{filepath} The full path.
-#'
-#' \code{path} The path to the Python executable.
-#'
-#' \code{...} Commands to run or named variables to set in the Python process.
-#'
-#' \code{file} File containing Python code to execute.
-#'
-#' \code{force} If \code{TRUE}, force the Python process to terminate
-#'   using a sytem call.
-#'
-#' @section Methods:
-#' \code{$new()} Initialize a Python interface. The Python process is not
-#'   started automatically.
-#'
-#' \code{$start()} Start the Python process. The Python process runs
-#'   asynchronously.
-#'
-#' \code{$running} Check if the Python process is running.
-#'
-#' \code{$exec()} Execute the specified Python
-#'   commands and invisibly return printed Python output (if any).
-#'   Alternatively, the \code{file} argument can be used to specify
-#'   a file containing Python code. Note that there will be no return
-#'   value unless an explicit Python \code{print} statement is executed.
-#'
-#' \code{$stop()} Stop the Python process by sending a request to the
-#'   Python process. If \code{force = TRUE}, the process will be
-#'   terminated using a system call instead.
-#'
-#' @name PythonEnv
-#' @examples
-#' pypath = Sys.which('python')
-#' if(nchar(pypath) > 0) {
-#'   py = PythonEnv$new(path = pypath, port = 6011)
-#'   py$start()
-#'   py$running
-#'   py$stop(force = TRUE)
-#' } else
-#' message("No Python distribution found!")
 NULL
 
 #' @export
@@ -868,3 +826,5 @@ Audiofile$set("public", "applySeewave", function(analysis=seewave::ACI, n=4096, 
   fullAnalysis <- sapply(A:B,gt)
 
 })
+
+
