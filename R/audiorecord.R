@@ -433,10 +433,15 @@ Audiorecord$set("public","renderAudioSnippets",function(baseName, targetDir, tbl
     self$renderAudioSnippet(snippetFilePath,from,to)
   }
 
-  mapply(renderSnippet, tbl$timeA, tbl$timeB)
+  ## load all the audio before applying parallelisation
+  ## TODO: should only load audio for the parts that will be used
+
+  lapply(self$audiofiles, function(af) {if (!af$audioLoaded) af$loadAudio })
+
+  # now parallelise rendering
+  mcmapply(renderSnippet, tbl$timeA, tbl$timeB, mc.cores = detectCores())
 
 })
-
 
 
 Audiorecord$set("public","spectrogramRegions",
