@@ -3,7 +3,7 @@
 ## abstracts away sample rate etc.
 
 # Maximum amount of memory
-R_MEMORY_MAX <- 2^29
+R_MEMORY_MAX <- 2^31
 mem_required <- function(frames,channels) { frames * channels * 8 * 2}
 mem_available <- function() { R_MEMORY_MAX - pryr::mem_used() }
 
@@ -144,6 +144,9 @@ Audiorecord <- R6::R6Class(
                     min(self$audiofiles[[ind2]]$duration(), to - self$start_times[[ind2]]))
         }
       }
+     },
+     regionIsFullyContainedInPart = function(timeA, timeB, part) {
+       return(self$start_times[[part]] <= timeA && timeB <= self$start_times[[part]] + self$audiofiles[[part]]$duration())
      },
      filenames = function() {
        lapply(self$audiofiles, function(af) { af$filename })
@@ -436,13 +439,22 @@ Audiorecord$set("public","renderAudioSnippets",function(baseName, targetDir, tbl
     self$renderAudioSnippet(snippetFilePath,from,to)
   }
 
-  ## load all the audio before applying parallelisation
-  ## TODO: should only load audio for the parts that will be used
+  # Note about parallelisation: because the Audiorecord class is designed
+  # to load as much of the underlying audiofile into memory as possible,
+  # parallelisation should only be applied to snippets within a single audio part
+  parts <- 1:length(self$audiofiles)
+  rowsFullyInPart <- function(part) { mapply(function(timeA,timeB) { self$regionIsFullyContainedInPart(timeA,timeB,part) }, tbl$timeA, tbl$timeB) }
+  lapply(parts, # within each part we can parallelise
+    function(part) {
+      partTable <- tbl[rowsFullyInPart(tbl$timeA,tbl$timeB,part),]
+      if (NROW(partTable) > 0) {
+        if (!self$audiofiles[[part]]$audioLoaded) { self$audiofiles[[part]]$loadAudio() }
+        parallel::mcmapply(renderSnippet, tbl$timeA, tbl$timeB, mc.cores = parallel::detectCores())
+        self$audiofiles[[part]]$unloadAudio()
+      }
+    })
 
-  lapply(self$audiofiles, function(af) {if (!af$audioLoaded) af$loadAudio() })
-
-  # now parallelise rendering
-  parallel::mcmapply(renderSnippet, tbl$timeA, tbl$timeB, mc.cores = parallel::detectCores())
+  #FIXME: deal with snippets that cross the border between two (or more) parts
 
 })
 
