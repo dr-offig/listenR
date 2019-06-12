@@ -174,7 +174,7 @@ Audiofile <- R6::R6Class("Audiofile",
                       gc()
                     },
                     initMsg = function() {
-                      cat(paste(sep=" ", "Prepared audio file", basename(self$filename), "part", self$part, "of", self$parts, "- ready for loading\n"))
+                      cat(paste(sep=" ", "Prepared audio file", basename(self$filename), "- ready for loading\n"))
                     },
                     loadMsg = function() {
                       cat(paste(sep=" ", "Loaded audio file", basename(self$filename), "part", self$part, "of", self$parts, "\n"))

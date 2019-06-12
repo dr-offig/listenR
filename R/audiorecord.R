@@ -439,7 +439,7 @@ Audiorecord$set("public","renderAudioSnippets",function(baseName, targetDir, tbl
   ## load all the audio before applying parallelisation
   ## TODO: should only load audio for the parts that will be used
 
-  lapply(self$audiofiles, function(af) {if (!af$audioLoaded) af$loadAudio })
+  lapply(self$audiofiles, function(af) {if (!af$audioLoaded) af$loadAudio() })
 
   # now parallelise rendering
   parallel::mcmapply(renderSnippet, tbl$timeA, tbl$timeB, mc.cores = parallel::detectCores())
