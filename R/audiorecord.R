@@ -3,7 +3,7 @@
 ## abstracts away sample rate etc.
 
 # Maximum amount of memory
-R_MEMORY_MAX <- 2^31
+R_MEMORY_MAX <- 2^32
 mem_required <- function(frames,channels) { frames * channels * 8 * 2}
 mem_available <- function() { R_MEMORY_MAX - pryr::mem_used() }
 
@@ -446,7 +446,7 @@ Audiorecord$set("public","renderAudioSnippets",function(baseName, targetDir, tbl
   rowsFullyInPart <- function(part) { mapply(function(timeA,timeB) { self$regionIsFullyContainedInPart(timeA,timeB,part) }, tbl$timeA, tbl$timeB) }
   lapply(parts, # within each part we can parallelise
     function(part) {
-      partTable <- tbl[rowsFullyInPart(tbl$timeA,tbl$timeB,part),]
+      partTable <- tbl[rowsFullyInPart(part),]
       if (NROW(partTable) > 0) {
         if (!self$audiofiles[[part]]$audioLoaded) { self$audiofiles[[part]]$loadAudio() }
         parallel::mcmapply(renderSnippet, tbl$timeA, tbl$timeB, mc.cores = parallel::detectCores())
