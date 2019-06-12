@@ -122,6 +122,7 @@ Audiofile <- R6::R6Class("Audiofile",
                         self$samplerate <- arg$samplerate
                         self$waveObject <- copy(arg$waveObject)
                         self$audioData <- copy(arg$audioData)
+                        self$audioLoaded <- copy(arg$audioLoaded)
                         self$spectrogram <- copy(arg$spectrogram)
                         self$spectrogramCalculated <- arg$spectrogramCalculated
                         self$spectrogramWindowSize <- arg$spectrogramWindowSize
@@ -169,14 +170,18 @@ Audiofile <- R6::R6Class("Audiofile",
                       self$constQCalculated <- FALSE
                       self$DTDWTCalculated <- FALSE
                       self$audioLoaded <- FALSE
+                      self$unloadMsg()
                       gc()
                     },
                     initMsg = function() {
-                      cat(paste0("Prepared audio file ", basename(self$filename), " - ready for loading\n"))
+                      cat(paste(sep=" ", "Prepared audio file", basename(self$filename), "part", self$part, "of", self$parts, "- ready for loading\n"))
                     },
                     loadMsg = function() {
                       cat(paste(sep=" ", "Loaded audio file", basename(self$filename), "part", self$part, "of", self$parts, "\n"))
                     },
+                    unloadMsg = function() {
+                      cat(paste(sep=" ", "Unloaded audio file", basename(self$filename), "part", self$part, "of", self$parts, "\n"))
+                    }
                     spect_window_centre = function(i) {
                        ((self$spectrogramWindowSize / 2) + (i-1) * self$spectrogramHop) / self$samplerate
                     },
