@@ -181,7 +181,7 @@ Audiofile <- R6::R6Class("Audiofile",
                     },
                     unloadMsg = function() {
                       cat(paste(sep=" ", "Unloaded audio file", basename(self$filename), "part", self$part, "of", self$parts, "\n"))
-                    }
+                    },
                     spect_window_centre = function(i) {
                        ((self$spectrogramWindowSize / 2) + (i-1) * self$spectrogramHop) / self$samplerate
                     },
