@@ -192,7 +192,7 @@ mix_n_match <- function(A_dirs, B_dirs, N, outputDir) {
       }
       lapply(B_dirs, mix_with_B_dir)
     }
-    parallel::mclapply(list.files(A_dir,pattern=".*\\.wav$",full.names=TRUE), mix_A_file, mc.cores = parallel::detectCores())
+    parallel::mclapply(list.files(A_dir,pattern=".*\\.wav$",full.names=TRUE), mix_A_file, mc.cores = parallel::detectCores() %/% 2)
   }
   lapply(A_dirs, mix_A_dir)
   return(TRUE)
@@ -274,8 +274,8 @@ augmentSnippets <- function(positive_dirs, negative_dirs, N, M, eqFactor, noiseF
   posFiles <- list.files(posCollectedOutputDir, pattern="\\.wav$", full.names = TRUE, recursive = TRUE)
   negFiles <- list.files(negCollectedOutputDir, pattern="\\.wav$", full.names = TRUE, recursive = TRUE)
 
-  parallel::mclapply(posFiles, function(fpath) { rand_noise_and_eq(fpath, posCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores())
-  parallel::mclapply(negFiles, function(fpath) { rand_noise_and_eq(fpath, negCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores())
+  parallel::mclapply(posFiles, function(fpath) { rand_noise_and_eq(fpath, posCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores() %/% 2)
+  parallel::mclapply(negFiles, function(fpath) { rand_noise_and_eq(fpath, negCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores() %/% 2)
 
 }
 ##############################################################

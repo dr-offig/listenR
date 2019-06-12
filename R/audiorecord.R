@@ -400,9 +400,10 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
   # FIXME: check if requested times are out of record
 
   af <- self$audiofiles[[ind1]]
-  if (!af$audioLoaded)
+  if (!af$audioLoaded) {
+    print(sprintf("RenderAudioSnippet is loading audio for %s part %d\n",filepath,ind1))
     af$loadAudio()
-
+  }
   startRelative <- from - self$start_times[[ind1]]
   stopRelative <- min(to-self$start_times[[ind1]], af$duration())
   stopAbsolute <- stopRelative + self$start_times[[ind1]]
@@ -449,7 +450,7 @@ Audiorecord$set("public","renderAudioSnippets",function(baseName, targetDir, tbl
       partTable <- tbl[rowsFullyInPart(part),]
       if (NROW(partTable) > 0) {
         if (!self$audiofiles[[part]]$audioLoaded) { self$audiofiles[[part]]$loadAudio() }
-        parallel::mcmapply(renderSnippet, tbl$timeA, tbl$timeB, mc.cores = parallel::detectCores())
+        parallel::mcmapply(renderSnippet, tbl$timeA, tbl$timeB, mc.cores = parallel::detectCores() %/% 2)
         self$audiofiles[[part]]$unloadAudio()
       }
     })
