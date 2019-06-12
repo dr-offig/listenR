@@ -450,7 +450,7 @@ Audiorecord$set("public","renderAudioSnippets",function(baseName, targetDir, tbl
       partTable <- tbl[rowsFullyInPart(part),]
       if (NROW(partTable) > 0) {
         if (!self$audiofiles[[part]]$audioLoaded) { self$audiofiles[[part]]$loadAudio() }
-        parallel::mcmapply(renderSnippet, tbl$timeA, tbl$timeB, mc.cores = parallel::detectCores() %/% 2)
+        parallel::mcmapply(renderSnippet, partTable$timeA, partTable$timeB, mc.cores = parallel::detectCores() %/% 2)
         self$audiofiles[[part]]$unloadAudio()
       }
     })
