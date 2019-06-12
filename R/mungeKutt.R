@@ -340,13 +340,16 @@ fixedLengthSnippetsProtocol <- function(audioFilePaths, annotationFilePaths,
   posDirs <- list.dirs(posScratchDir, recursive=TRUE, full.names = TRUE)
   negDirs <- list.dirs(negScratchDir, recursive=TRUE, full.names = TRUE)
 
-  #augmentSnippets(posDirs, negDirs, N2, N3, eqFactor, noiseFactor, posOutputDir, negOutputDir)
+  augmentSnippets(posDirs, negDirs, N2, N3, eqFactor, noiseFactor, posOutputDir, negOutputDir)
 
 }
 
 
-
-
+#
+# ar <- Audiorecord$new(filenames=list(audiofile))
+# dt <- fread(commentsFile)
+# zones <- dt[type=="REGION",duration:=as.seconds(timeB)-as.seconds(timeA) ]
+### End Testing Only ###
 
 
 #ar$spectrogramRegions(filepath=paste0(dir,"/",rec,"_EXPORT"),
