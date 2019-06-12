@@ -158,7 +158,7 @@ Audiorecord <- R6::R6Class(
        file.copy(from=self$physicalFiles(), to=folderURL, overwrite=overwrite)
      },
      unloadAudio = function() {
-       lapply(self$audiofiles, unloadAudio)
+       lapply(self$audiofiles, function(af) { af$unloadAudio() })
      }
 
    )
@@ -408,17 +408,19 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
   stopRelative <- min(to-self$start_times[[ind1]], af$duration())
   stopAbsolute <- stopRelative + self$start_times[[ind1]]
   outputWave <- af$wave(units = "seconds", from = startRelative, to = stopRelative)
+  af$unloadAudio()
 
   cc <- ind1+1
   tmp = stopAbsolute
   while(cc <= ind2) {
     af <- self$audiofiles[[cc]]
-    af$loadAudio()
+    if (!af$audioLoaded) { af$loadAudio() }
     startRelative <- tmp - self$start_times[[cc]]
     stopRelative <- min(to-self$start_times[[cc]], af$duration())
     stopAbsolute <- stopRelative + self$start_times[[cc]]
     nextWave <- af$wave(units = "seconds", from = startRelative, to = stopRelative)
     outputWave <- bind(outputWave, nextWave)
+    af$unloadAudio()
     tmp <- stopAbsolute
     cc <- cc+1
   }
