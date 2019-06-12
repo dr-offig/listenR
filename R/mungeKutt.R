@@ -346,26 +346,7 @@ fixedLengthSnippetsProtocol <- function(audioFilePaths, annotationFilePaths,
 
 
 
-### Testing Only ###
-recs <- c("20190210_CLAY001","20190318_CERS001")
-dirs <- paste0("/home/ybot/code/R/Bees/www/data/",recs)
-audiofiles <- paste0(dirs,"/",recs,".wav")
-annotationFiles <- paste0(dirs,"/",recs,".csv")
-positiveLabels <- c("Honey Bee", "BBB")
-negativeLabels <- c("No Buzz", "No Buzz")
-outputDir <- "/home/ybot/data/AUG_TEST"
-#
-fixedLengthSnippetsProtocol(audiofiles, annotationFiles,
-                                        positiveLabels, negativeLabels,
-                                        snippetDur= 1.0, N1=1, N2=1, N3=1,
-                                        eqFactor = 1.0, noiseFactor = 0.001,
-                                        outputDir)
 
-#
-# ar <- Audiorecord$new(filenames=list(audiofile))
-# dt <- fread(commentsFile)
-# zones <- dt[type=="REGION",duration:=as.seconds(timeB)-as.seconds(timeA) ]
-### End Testing Only ###
 
 
 #ar$spectrogramRegions(filepath=paste0(dir,"/",rec,"_EXPORT"),
