@@ -153,6 +153,9 @@ Audiorecord <- R6::R6Class(
      },
      copyToFolder = function(folderURL, overwrite=FALSE) {
        file.copy(from=self$physicalFiles(), to=folderURL, overwrite=overwrite)
+     },
+     unloadAudio = function() {
+       lapply(self$audiofiles, unloadAudio)
      }
 
    )
@@ -379,7 +382,7 @@ function(filepath, from=0, to=self$duration(),
     frameDur <- as.numeric(frameEnds[[1]]) - as.numeric(frameStarts[[1]])
     frameRate <- 1 / frameDur
     # ffmpeg -f image2 -framerate 0.0448 -i '20190210_CLAY001_SPECT_%06d.png' -y -r 30 test.mp4
-    cmdArgs <- c('-f','image2', '-framerate', frameRate, '-i', paste0(dirname, "/", fname, '_%06d.png'), '-y', '-r', 30.0, filepath)
+    cmdArgs <- c('-f','image2', '-framerate', frameRate, '-i', paste0(dirname, "/", fname, '_%06d.png'), '-y', '-pix_fmt', 'yuv420p', '-r', 30.0, filepath)
     system2('ffmpeg', cmdArgs)
   }
 
@@ -439,7 +442,7 @@ Audiorecord$set("public","renderAudioSnippets",function(baseName, targetDir, tbl
   lapply(self$audiofiles, function(af) {if (!af$audioLoaded) af$loadAudio })
 
   # now parallelise rendering
-  mcmapply(renderSnippet, tbl$timeA, tbl$timeB, mc.cores = detectCores())
+  parallel::mcmapply(renderSnippet, tbl$timeA, tbl$timeB, mc.cores = parallel::detectCores())
 
 })
 
