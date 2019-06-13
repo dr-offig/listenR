@@ -3,7 +3,7 @@
 ## abstracts away sample rate etc.
 
 # Maximum amount of memory
-R_MEMORY_MAX <- 2^32
+R_MEMORY_MAX <- 2^30
 mem_required <- function(frames,channels) { frames * channels * 8 * 2}
 mem_available <- function() { R_MEMORY_MAX - pryr::mem_used() }
 
