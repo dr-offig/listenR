@@ -147,7 +147,7 @@ Audiorecord <- R6::R6Class(
        }
      },
      candidateFileIndexForTime = function(t) {
-       firstAfter <- min(which(self$start_times > t))
+       firstAfter <- suppressWarnings(min(which(self$start_times > t)))
        if (firstAfter == 1) {
          return(1)
        } else if (is.infinite(firstAfter)) {
