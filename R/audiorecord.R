@@ -430,7 +430,7 @@ function(filepath, from=0, to=self$duration(),
     frameDur <- as.numeric(frameEnds[[1]]) - as.numeric(frameStarts[[1]])
     frameRate <- 1 / frameDur
     # ffmpeg -f image2 -framerate 0.0448 -i '20190210_CLAY001_SPECT_%06d.png' -y -r 30 test.mp4
-    cmdArgs <- c('-hide_banner','-f','image2', '-framerate', frameRate, '-i', paste0(dirname, "/", fname, '_%06d.png'), '-y', '-pix_fmt', 'yuv420p', '-r', 30.0, filepath)
+    cmdArgs <- c('-hide_banner', '-v', 'quiet', '-f','image2', '-framerate', frameRate, '-i', paste0(dirname, "/", fname, '_%06d.png'), '-y', '-pix_fmt', 'yuv420p', '-r', 30.0, filepath)
     system2('ffmpeg', cmdArgs)
   }
 

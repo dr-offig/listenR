@@ -183,7 +183,7 @@ mix_n_match <- function(A_dirs, B_dirs, N, outputDir) {
       mix_with_B_dir <- function(B_dir) {
         mix_with_B_file <- function(B_file) {
           outName <- paste0(outputDir, "/", mainIdentifier(A_file), "_MIX_", mainIdentifier(B_file), ".wav")
-          cmdArgs <- c('-hide_banner', '-y', '-i', shQuote(A_file), '-i', shQuote(B_file), '-filter_complex', 'amix=inputs=2:duration=first', outName)
+          cmdArgs <- c('-hide_banner', '-v', 'quiet', '-y', '-i', shQuote(A_file), '-i', shQuote(B_file), '-filter_complex', 'amix=inputs=2:duration=first', outName)
           system2('ffmpeg', cmdArgs)
         }
         B_files_in_dir <- list.files(B_dir,pattern=".*\\.wav$", full.names=TRUE)
@@ -192,7 +192,7 @@ mix_n_match <- function(A_dirs, B_dirs, N, outputDir) {
       }
       lapply(B_dirs, mix_with_B_dir)
     }
-    parallel::mclapply(list.files(A_dir,pattern=".*\\.wav$",full.names=TRUE), mix_A_file, mc.cores = parallel::detectCores() %/% 2)
+    mclapply2(list.files(A_dir,pattern=".*\\.wav$",full.names=TRUE), mix_A_file, mc.cores = parallel::detectCores())
   }
   lapply(A_dirs, mix_A_dir)
   return(TRUE)
@@ -217,7 +217,7 @@ rand_noise_and_eq <- function(filepath, outputDir, eqFactor=1.0, noiseFactor=0.0
   outName <- paste0(outputDir, "/", fname, "_FILT_", stringi::stri_rand_strings(1,8, pattern="[A-Z]"),".wav")
 
   ## how many channels does this audio file have?
-  cmdArgs <- c('-hide_banner', '-show_streams', '-select_streams', 'a', filepath)
+  cmdArgs <- c('-hide_banner', '-v', 'quiet', '-show_streams', '-select_streams', 'a', filepath)
   info <- system2('ffprobe',cmdArgs,stdout=TRUE)
   chans <- ffInfoFieldValue(info, 'channels')
   if (is.na(chans)) return(NA)
@@ -256,7 +256,7 @@ rand_noise_and_eq <- function(filepath, outputDir, eqFactor=1.0, noiseFactor=0.0
   #       "anoisesrc=c=pink:a=0.01[nz0]; anoisesrc=c=pink:a=0.01[nz1]; [nz0][nz1]amerge[nz]; \
   #       [0:a][nz]amix=inputs=2:duration=shortest,anequalizer=c0 f=200 w=100 g=-10 t=1|c1 f=200 w=100 g=-10 t=1" \
   #       -y OUTPUT.wav
-  cmdArgs <- c('-hide_banner', '-i', shQuote(filepath), '-filter_complex', shQuote(filterStr), '-y', shQuote(outName))
+  cmdArgs <- c('-hide_banner', '-v', 'quiet', '-i', shQuote(filepath), '-filter_complex', shQuote(filterStr), '-y', shQuote(outName))
   system2('ffmpeg', cmdArgs)
 
 }
@@ -274,9 +274,9 @@ augmentSnippets <- function(positive_dirs, negative_dirs, N, M, eqFactor, noiseF
   posFiles <- list.files(posCollectedOutputDir, pattern="\\.wav$", full.names = TRUE, recursive = TRUE)
   negFiles <- list.files(negCollectedOutputDir, pattern="\\.wav$", full.names = TRUE, recursive = TRUE)
 
-  parallel::mclapply(posFiles, function(fpath) { rand_noise_and_eq(fpath, posCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores() %/% 2)
-  parallel::mclapply(negFiles, function(fpath) { rand_noise_and_eq(fpath, negCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores() %/% 2)
-
+  parallel::mclapply2(posFiles, function(fpath) { rand_noise_and_eq(fpath, posCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores())
+  parallel::mclapply2(negFiles, function(fpath) { rand_noise_and_eq(fpath, negCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores())
+  return(TRUE)
 }
 ##############################################################
 
@@ -344,7 +344,7 @@ fixedLengthSnippetsProtocol <- function(audioFilePaths, annotationFilePaths,
   negDirs <- list.dirs(negScratchDir, recursive=TRUE, full.names = TRUE)
 
   augmentSnippets(posDirs, negDirs, N2, N3, eqFactor, noiseFactor, posOutputDir, negOutputDir)
-
+  return(TRUE)
 }
 
 
