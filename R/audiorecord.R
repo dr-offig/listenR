@@ -408,7 +408,7 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
   stopRelative <- min(to-self$start_times[[ind1]], af$duration())
   stopAbsolute <- stopRelative + self$start_times[[ind1]]
   outputWave <- af$wave(units = "seconds", from = startRelative, to = stopRelative)
-  af$unloadAudio()
+  af$unloadAudio(); rm(af); gc()
 
   cc <- ind1+1
   tmp = stopAbsolute
@@ -420,7 +420,7 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
     stopAbsolute <- stopRelative + self$start_times[[cc]]
     nextWave <- af$wave(units = "seconds", from = startRelative, to = stopRelative)
     outputWave <- bind(outputWave, nextWave)
-    af$unloadAudio()
+    af$unloadAudio(); rm(af); gc()
     tmp <- stopAbsolute
     cc <- cc+1
   }
@@ -453,7 +453,7 @@ Audiorecord$set("public","renderAudioSnippets",function(baseName, targetDir, tbl
       if (NROW(partTable) > 0) {
         if (!self$audiofiles[[part]]$audioLoaded) { self$audiofiles[[part]]$loadAudio() }
         parallel::mcmapply(renderSnippet, partTable$timeA, partTable$timeB, mc.cores = parallel::detectCores() %/% 2)
-        self$audiofiles[[part]]$unloadAudio()
+        self$audiofiles[[part]]$unloadAudio();
       }
     })
 
