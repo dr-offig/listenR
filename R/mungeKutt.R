@@ -274,8 +274,8 @@ augmentSnippets <- function(positive_dirs, negative_dirs, N, M, eqFactor, noiseF
   posFiles <- list.files(posCollectedOutputDir, pattern="\\.wav$", full.names = TRUE, recursive = TRUE)
   negFiles <- list.files(negCollectedOutputDir, pattern="\\.wav$", full.names = TRUE, recursive = TRUE)
 
-  parallel::mclapply2(posFiles, function(fpath) { rand_noise_and_eq(fpath, posCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores())
-  parallel::mclapply2(negFiles, function(fpath) { rand_noise_and_eq(fpath, negCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores())
+  mclapply2(posFiles, function(fpath) { rand_noise_and_eq(fpath, posCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores())
+  mclapply2(negFiles, function(fpath) { rand_noise_and_eq(fpath, negCollectedOutputDir, eqFactor, noiseFactor) }, mc.cores = parallel::detectCores())
   return(TRUE)
 }
 ##############################################################
