@@ -183,7 +183,7 @@ mix_n_match <- function(A_dirs, B_dirs, N, outputDir) {
       mix_with_B_dir <- function(B_dir) {
         mix_with_B_file <- function(B_file) {
           outName <- paste0(outputDir, "/", mainIdentifier(A_file), "_MIX_", mainIdentifier(B_file), ".wav")
-          cmdArgs <- c('-y', '-i', shQuote(A_file), '-i', shQuote(B_file), '-filter_complex', 'amix=inputs=2:duration=first', outName)
+          cmdArgs <- c('-hide_banner', '-y', '-i', shQuote(A_file), '-i', shQuote(B_file), '-filter_complex', 'amix=inputs=2:duration=first', outName)
           system2('ffmpeg', cmdArgs)
         }
         B_files_in_dir <- list.files(B_dir,pattern=".*\\.wav$", full.names=TRUE)
@@ -256,7 +256,7 @@ rand_noise_and_eq <- function(filepath, outputDir, eqFactor=1.0, noiseFactor=0.0
   #       "anoisesrc=c=pink:a=0.01[nz0]; anoisesrc=c=pink:a=0.01[nz1]; [nz0][nz1]amerge[nz]; \
   #       [0:a][nz]amix=inputs=2:duration=shortest,anequalizer=c0 f=200 w=100 g=-10 t=1|c1 f=200 w=100 g=-10 t=1" \
   #       -y OUTPUT.wav
-  cmdArgs <- c('-i', shQuote(filepath), '-filter_complex', shQuote(filterStr), '-y', shQuote(outName))
+  cmdArgs <- c('-hide_banner', '-i', shQuote(filepath), '-filter_complex', shQuote(filterStr), '-y', shQuote(outName))
   system2('ffmpeg', cmdArgs)
 
 }
@@ -323,6 +323,9 @@ fixedLengthSnippetsProtocol <- function(audioFilePaths, annotationFilePaths,
     negSnippetTable <- sampleInsideRegions(tbl=negativeRegions, numSamples=N1, minDur=snippetDur, maxDur=snippetDur)
 
     record <- mainIdentifier(audioFilePath)
+    # FIXME: Rendering out the Positive and Negative snippets separately is inefficient
+    # because it involves loading/unloading each audiofile twice. However, integrating
+    # the two calls together would involve some refactoring
     ar$renderAudioSnippets(baseName=paste0(posLabel, "_", record),
                            targetDir=paste0(posScratchDir, "/", posLabel, "_", record),
                            posSnippetTable)

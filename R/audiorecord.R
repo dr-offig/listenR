@@ -385,7 +385,7 @@ function(filepath, from=0, to=self$duration(),
     frameDur <- as.numeric(frameEnds[[1]]) - as.numeric(frameStarts[[1]])
     frameRate <- 1 / frameDur
     # ffmpeg -f image2 -framerate 0.0448 -i '20190210_CLAY001_SPECT_%06d.png' -y -r 30 test.mp4
-    cmdArgs <- c('-f','image2', '-framerate', frameRate, '-i', paste0(dirname, "/", fname, '_%06d.png'), '-y', '-pix_fmt', 'yuv420p', '-r', 30.0, filepath)
+    cmdArgs <- c('-hide_banner','-f','image2', '-framerate', frameRate, '-i', paste0(dirname, "/", fname, '_%06d.png'), '-y', '-pix_fmt', 'yuv420p', '-r', 30.0, filepath)
     system2('ffmpeg', cmdArgs)
   }
 
@@ -408,25 +408,25 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
   stopRelative <- min(to-self$start_times[[ind1]], af$duration())
   stopAbsolute <- stopRelative + self$start_times[[ind1]]
   outputWave <- af$wave(units = "seconds", from = startRelative, to = stopRelative)
-  af$unloadAudio(); rm(af); gc()
 
   cc <- ind1+1
   tmp = stopAbsolute
   while(cc <= ind2) {
-    af <- self$audiofiles[[cc]]
-    if (!af$audioLoaded) { af$loadAudio() }
+    print(sprintf("Snippet from %f to %f crosses boundary between parts %d and %d\n", from, to, ind1, cc))
+    af2 <- self$audiofiles[[cc]]
+    if (!af2$audioLoaded) { af2$loadAudio() }
     startRelative <- tmp - self$start_times[[cc]]
-    stopRelative <- min(to-self$start_times[[cc]], af$duration())
+    stopRelative <- min(to-self$start_times[[cc]], af2$duration())
     stopAbsolute <- stopRelative + self$start_times[[cc]]
-    nextWave <- af$wave(units = "seconds", from = startRelative, to = stopRelative)
+    nextWave <- af2$wave(units = "seconds", from = startRelative, to = stopRelative)
     outputWave <- bind(outputWave, nextWave)
-    af$unloadAudio(); rm(af); gc()
+    rm(nextWave)
     tmp <- stopAbsolute
     cc <- cc+1
   }
 
   tuneR::writeWave(tuneR::normalize(outputWave, rescale=FALSE), filepath)
-
+  rm(outputWave); gc()
 })
 
 
@@ -616,7 +616,7 @@ convertIntoWav <- function(fname, targetSR=48000) {
   }
 
   # otherwise we will reencode using ffmpeg (if available)
-  cmdArgs <- c('-y', '-i', fname, '-acodec pcm_s16le', '-ar', as.character(targetSR), outName)
+  cmdArgs <- c('-hide_banner','-y', '-i', fname, '-acodec pcm_s16le', '-ar', as.character(targetSR), outName)
   system2('ffmpeg', cmdArgs)
   return(outName)
 
