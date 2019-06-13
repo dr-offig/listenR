@@ -2,8 +2,53 @@
 ## made up of a sequence of audio files
 ## abstracts away sample rate etc.
 
+## Memory constraint aware parellelisation from package snpEnrichment ##
+maxCores <- function (mc.cores = 1) {
+  if (Sys.info()[["sysname"]] == "Linux") {
+    nbCores <- parallel::detectCores()
+    mc.cores.old <- mc.cores
+    if (file.exists("/proc/meminfo")) {
+      memInfo <- readLines("/proc/meminfo")
+      sysMemFree <- memInfo[grep('^MemFree:', memInfo)]
+      sysMemCached <- memInfo[grep('^Cached:', memInfo)]
+      sysMemAvailable <- 0.95*(as.numeric(gsub("[^0-9]*([0-9]*)", "\\1", sysMemFree)) + as.numeric(gsub("[^0-9]*([0-9]*)", "\\1", sysMemCached)))
+      sysProc <- as.numeric(unlist(strsplit(system(paste("ps v", Sys.getpid()), intern = TRUE)[2], " +"), use.names = FALSE)[8])
+      mc.cores <- max(min(as.numeric(mc.cores), floor(sysMemAvailable/sysProc)), 1)
+      if (mc.cores > nbCores) {
+        mc.cores <- nbCores
+      } else {}
+      if (mc.cores != mc.cores.old) {
+        warning(paste0('To avoid memory overload "mc.cores" was decreased to "', mc.cores, '".'), call. = FALSE)
+      } else {}
+    } else {
+      mc.cores <- ifelse(mc.cores.old>nbCores, nbCores, mc.cores.old)
+    }
+  } else {
+    mc.cores <- 1
+  }
+  return(mc.cores)
+}
+
+
+mclapply2 <- function (X, FUN, ..., mc.preschedule = TRUE, mc.set.seed = TRUE, mc.silent = FALSE, mc.cores = getOption("mc.cores", 2L), mc.cleanup = TRUE, mc.allow.recursive = FALSE) {
+  if (Sys.info()[["sysname"]] != "Linux") {
+    mc.cores <- 1
+  } else {
+    mc.cores <- min(parallel::detectCores(), mc.cores)
+  }
+  return(parallel::mclapply(X = X, FUN = FUN, ...,
+                  mc.preschedule = mc.preschedule, mc.set.seed = mc.set.seed, mc.silent = mc.silent,
+                  mc.cores = maxCores(mc.cores), mc.cleanup = mc.cleanup, mc.allow.recursive = mc.allow.recursive))
+}
+
+
+# utility functions
+as.row.list <- function(tbl) {
+  unlist(apply(tbl, 1, list), recursive = FALSE)
+}
+
 # Maximum amount of memory
-R_MEMORY_MAX <- 2^30
+R_MEMORY_MAX <- 2^32
 mem_required <- function(frames,channels) { frames * channels * 8 * 2}
 mem_available <- function() { R_MEMORY_MAX - pryr::mem_used() }
 
@@ -419,7 +464,7 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
     stopRelative <- min(to-self$start_times[[cc]], af2$duration())
     stopAbsolute <- stopRelative + self$start_times[[cc]]
     nextWave <- af2$wave(units = "seconds", from = startRelative, to = stopRelative)
-    outputWave <- bind(outputWave, nextWave)
+    outputWave <- tuneR::bind(outputWave, nextWave)
     rm(nextWave)
     tmp <- stopAbsolute
     cc <- cc+1
@@ -435,7 +480,9 @@ Audiorecord$set("public","renderAudioSnippets",function(baseName, targetDir, tbl
   if (!dir.exists(targetDir))
     dir.create(targetDir,recursive = TRUE)
 
-  renderSnippet <- function(from, to) {
+  renderSnippet <- function(bounds) {
+    from <- bounds["timeA"]
+    to <- bounds["timeB"]
     startStr <- gsub(":","-",format(hms::as.hms(from)),fixed=TRUE)
     endStr <- gsub(":","-",format(hms::as.hms(to)),fixed=TRUE)
     snippetFilePath <- paste0(targetDir, '/', baseName, '_', startStr, '_', endStr, '.wav')
@@ -450,10 +497,11 @@ Audiorecord$set("public","renderAudioSnippets",function(baseName, targetDir, tbl
   lapply(parts, # within each part we can parallelise
     function(part) {
       partTable <- tbl[rowsFullyInPart(part),]
+      snippetList <- as.row.list(partTable)
       if (NROW(partTable) > 0) {
         if (!self$audiofiles[[part]]$audioLoaded) { self$audiofiles[[part]]$loadAudio() }
-        parallel::mcmapply(renderSnippet, partTable$timeA, partTable$timeB, mc.cores = parallel::detectCores() %/% 2)
-        self$audiofiles[[part]]$unloadAudio();
+        mclapply2(snippetList, renderSnippet, mc.cores = parallel::detectCores())
+        self$audiofiles[[part]]$unloadAudio()
       }
     })
 
