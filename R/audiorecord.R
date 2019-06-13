@@ -470,7 +470,7 @@ Audiorecord$set("public","renderAudioSnippet",function(filepath, from, to=from+1
     cc <- cc+1
   }
 
-  tuneR::writeWave(tuneR::normalize(outputWave, rescale=FALSE), filepath)
+  try(tuneR::writeWave(tuneR::normalize(outputWave, rescale=FALSE), filepath))
   rm(outputWave); gc()
 })
 
