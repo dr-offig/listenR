@@ -1,0 +1,27 @@
+#!/bin/bash
+
+## NB: only dealing with mono files
+## multichannel files will be summed to mono
+
+##### input parameters #####
+# $input_path
+# $output_path
+# $noiseLevel   0=no noise, 1=max noise, 0.001=recommended
+if [[ $# -ne 3 ]]; then
+  echo "Usage: add_noise input_path output_path noiseLevel"
+else
+
+  input_path=$1
+  output_path=$2
+  noise_level=$3
+  sum_to_mono $input_path
+  rec=`basename -s .wav $input_path`
+  output_dir=`dirname ${output_path}`
+  [ -d ${output_dir} ] || mkdir -p ${output_dir}
+  noiseStr="anoisesrc=c=pink:a=${noise_level}[nz]"
+  mixStr="[0:a][nz]amix=inputs=2:duration=shortest"
+  filterStr="${noiseStr}; ${mixStr}"
+
+  ffmpeg '-y' -hide_banner -v quiet -i ${input_path} -filter_complex "${filterStr}" ${output_path}
+
+fi

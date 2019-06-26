@@ -1,0 +1,29 @@
+#!/bin/bash
+
+## NB: only dealing with mono files
+## multichannel files will be summed to mono
+
+##### input parameters #####
+# $input_path_1
+# $input_path_2
+# $output_path
+
+if [[ $# -ne 3 ]]; then
+  echo "Usage: mix input_path_1 input_path_2 output_path"
+else
+
+  input_path_1=$1
+  input_path_2=$2
+  output_path=$3
+
+  sum_to_mono $input_path_1
+  sum_to_mono $input_path_2
+  rec1=`basename -s .wav $input_path_1`
+  rec2=`basename -s .wav $input_path_2`
+  output_dir=`dirname ${output_path}`
+  [ -d ${output_dir} ] || mkdir -p ${output_dir}
+  mixStr="amix=inputs=2:duration=first"
+
+  ffmpeg '-y' -hide_banner -i ${input_path_1} -i ${input_path_2} -filter_complex "${mixStr}" ${output_path}
+
+fi

@@ -1,0 +1,33 @@
+#!/bin/bash
+
+## NB: only dealing with mono files
+## multichannel files will be summed to mono
+
+##### input parameters #####
+# $input_path
+# $output_path
+# $filter_str
+if [[ $# -ne 3 ]]; then
+  echo "Usage: filter input_path output_path filter_string"
+else
+
+  input_path=$1
+  output_path=$2
+  filter_str=$3
+  sum_to_mono $input_path
+  rec=`basename -s .wav ${input_path}`
+  output_dir=`dirname ${output_path}`
+  [ -d ${output_dir} ] || mkdir -p ${output_dir}
+  #outName="${outputDir}/${rec}_FILT_${rstr}.wav"
+  #echo "Writing to ${outName}"
+
+  ffmpeg '-y' -hide_banner -v quiet -i ${input_path} -filter:a "${filter_str}" ${output_path}
+
+fi
+
+
+# Uniform random float in bash
+#r1=`echo "10o 16i 8k $(xxd -u -p -l 4 /dev/urandom) FFFFFFFF / p" | dc`
+
+# Random string of 8 uppercase letters in bash
+#(export LC_CTYPE=C; rstr=$(cat /dev/urandom | tr -dc '[:upper:]' | fold -w 8 | head -n 1))

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: probe_channels filename.wav"
+else
+  chan_info=`ffprobe -hide_banner -v quiet -show_streams -select_streams a $1 | grep "channels=" | cut -d"=" -f2`
+  echo $chan_info
+fi
