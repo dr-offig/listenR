@@ -183,8 +183,10 @@ mix_n_match <- function(A_dirs, B_dirs, N, outputDir) {
       mix_with_B_dir <- function(B_dir) {
         mix_with_B_file <- function(B_file) {
           outName <- paste0(outputDir, "/", mainIdentifier(A_file), "_MIX_", mainIdentifier(B_file), ".wav")
-          cmdArgs <- c('-hide_banner', '-v', 'quiet', '-y', '-i', shQuote(A_file), '-i', shQuote(B_file), '-filter_complex', 'amix=inputs=2:duration=first', outName)
-          system2('ffmpeg', cmdArgs)
+          #cmdArgs <- c('-hide_banner', '-v', 'quiet', '-y', '-i', shQuote(A_file), '-i', shQuote(B_file), '-filter_complex', 'amix=inputs=2:duration=first', outName)
+          #system2('ffmpeg', cmdArgs)
+          cmdArgs <- c(shQuote(A_file), shQuote(B_file), shQuote(outName))
+          system2('mix', cmdArgs)
         }
         B_files_in_dir <- list.files(B_dir,pattern=".*\\.wav$", full.names=TRUE)
         chosen_B_files <- sample(B_files_in_dir, size=min(length(B_files_in_dir),N))
